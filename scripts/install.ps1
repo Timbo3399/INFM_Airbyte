@@ -4,10 +4,12 @@
 # Was dieses Skript tut:
 #   1. Voraussetzungen pruefen (Docker, Git, Python)
 #   2. .env aus .env.example erstellen (wenn nicht vorhanden)
-#   3. Docker-Images laden
-#   4. Datenbank-Stack starten
-#   5. Warten bis alle Container healthy sind
-#   6. Verbindungsinfos ausgeben
+#   3. oss_local_root Volume sicherstellen
+#   4. Docker-Images laden
+#   5. Datenbank-Stack starten
+#   6. Warten bis alle Container healthy sind
+#   7. JSON-Daten in source-postgres laden (fm_rna, hso_personal)
+#   8. Verbindungsinfos ausgeben
 
 $ErrorActionPreference = "Stop"
 $ROOT = Split-Path $PSScriptRoot -Parent
@@ -71,12 +73,14 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Ok "docker compose verfuegbar ($($composeVersion -replace 'Docker Compose version ',''))."
 
-# Python (optional, benoetigt fuer Szenarien 3 und 4)
+# Python (benoetigt fuer JSON-Daten laden + Szenarien 3 und 4)
+$pythonAvailable = $false
 if (Get-Command python -ErrorAction SilentlyContinue) {
     $pyVer = python --version 2>&1
     Write-Ok "Python gefunden ($pyVer)."
+    $pythonAvailable = $true
 } else {
-    Write-Warn "Python nicht gefunden - fuer Szenarien 3 und 4 erforderlich."
+    Write-Warn "Python nicht gefunden - JSON-Daten koennen nicht geladen werden."
     Write-Warn "Installieren: https://www.python.org/downloads/ (>= 3.11, 'Add to PATH' aktivieren)"
 }
 
@@ -163,7 +167,30 @@ if ($elapsed -ge $maxWaitSec) {
     }
 }
 
-# --- 7. Ergebnis und naechste Schritte ---------------------------------------
+# --- 7. JSON-Daten in source-postgres laden ----------------------------------
+
+Write-Step "JSON-Daten laden (fm_rna, hso_personal)"
+
+if ($pythonAvailable) {
+    # psycopg2-binary sicherstellen
+    $pipOut = python -m pip show psycopg2-binary 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "    Installiere psycopg2-binary..." -ForegroundColor DarkGray
+        python -m pip install psycopg2-binary --quiet
+    }
+
+    python "$ROOT\scripts\load_json.py"
+    if ($LASTEXITCODE -eq 0) {
+        Write-Ok "JSON-Daten erfolgreich geladen."
+    } else {
+        Write-Warn "JSON-Laden fehlgeschlagen - manuell ausfuehren: python scripts\load_json.py"
+    }
+} else {
+    Write-Warn "Python nicht verfuegbar - JSON-Daten nicht geladen."
+    Write-Warn "Nach Python-Installation ausfuehren: python scripts\load_json.py"
+}
+
+# --- 8. Ergebnis und naechste Schritte ---------------------------------------
 
 Write-Host ""
 Write-Host "  ===================================================" -ForegroundColor DarkGray
