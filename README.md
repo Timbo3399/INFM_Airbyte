@@ -68,11 +68,14 @@
 
 ### Schritt 1: Voraussetzungen installieren
 
+> **Plattform:** läuft unter **Windows, Linux und macOS**. Windows nutzt die
+> PowerShell-Skripte (`.ps1`), Linux/macOS die Bash-Skripte (`.sh`) – sonst identisch.
+
 | Tool | Download |
 |------|----------|
-| Docker Desktop | https://www.docker.com/products/docker-desktop/ |
-| Git | https://git-scm.com/download/win |
-| Python ≥ 3.11 *(optional)* | https://www.python.org/downloads/ — nur falls ohne Docker-Fallback gewünscht |
+| Docker Desktop / Engine | https://www.docker.com/products/docker-desktop/ (Linux: Docker Engine + Compose-Plugin) |
+| Git | https://git-scm.com/downloads |
+| Python ≥ 3.11 *(optional)* | https://www.python.org/downloads/ — sonst greift der Docker-Fallback |
 
 ### Schritt 2: Repo klonen
 
@@ -83,20 +86,30 @@ cd INFM_Airbyte
 
 ### Schritt 3: Alles automatisch installieren
 
+**Windows (PowerShell):**
 ```powershell
 .\scripts\install.ps1
 ```
+**Linux / macOS:**
+```bash
+bash scripts/install.sh
+```
 
-Startet alle drei Datenbank-Container und lädt die Testdaten automatisch.
+Startet den Datenbank-Stack und lädt die Testdaten automatisch.
 
 ### Schritt 4: Airbyte einrichten
 
+**Windows (PowerShell):**
 ```powershell
 .\scripts\setup-airbyte.ps1
 ```
+**Linux / macOS:**
+```bash
+bash scripts/setup-airbyte.sh
+```
 
-Lädt Airbyte herunter, verbindet es mit dem gemeinsamen Netzwerk und startet die UI.  
-**Airbyte UI:** http://localhost:8000 (Login: `airbyte` / `password`)
+Installiert Airbyte (via `abctl`) und startet die UI.  
+**Airbyte UI:** http://localhost:8000 — Login anzeigen mit `abctl local credentials` (siehe [docs/zugang.md](docs/zugang.md))
 
 ### Schritt 5: Testszenarien durchführen
 
@@ -111,6 +124,7 @@ INFM_Airbyte/
 ├── docker-compose.yml          ← DB-Stack (source + dest)
 ├── .env.example                ← Vorlage für Umgebungsvariablen
 ├── .gitignore
+├── .gitattributes              ← LF/CRLF-Regeln (Cross-Platform)
 │
 ├── sql/
 │   └── source/
@@ -138,17 +152,17 @@ INFM_Airbyte/
 │   ├── testszenarien.md        ← Konkrete Testfälle
 │   └── zwischenbericht.md      ← Zwischenbericht (Abgabe 7.6.)
 │
-└── scripts/
-    ├── install.ps1             ← Komplett-Setup (DB-Stack + Testdaten)
-    ├── setup-airbyte.ps1       ← Airbyte via abctl installieren
-    ├── start.ps1               ← Stack starten
-    ├── stop.ps1                ← Stack stoppen (-v für vollständigen Reset)
-    ├── load_json.py            ← lädt fm_rna + hso_personal (JSON)
-    ├── load_fm_inst.py         ← lädt fm_inst (Semikolon-CSV, 86→24 Spalten)
-    ├── load_fm_gebaeude.py     ← lädt fm_gebaeude (repariert kaputte Zeilen)
-    ├── load_k_plz.py           ← lädt k_plz (filtert eingebettete Header)
-    ├── mapping/                ← Szenario 4: Account-Generator
-    └── images/                 ← Szenario 3: BLOB-Im-/Export
+└── scripts/                    ← .ps1 = Windows · .sh = Linux/macOS (gleiche Logik)
+    ├── install.ps1 · install.sh        ← Komplett-Setup (DB-Stack + Testdaten)
+    ├── setup-airbyte.ps1 · .sh         ← Airbyte via abctl installieren
+    ├── start.ps1 · start.sh            ← Stack starten
+    ├── stop.ps1 · stop.sh              ← Stack stoppen (-v für vollständigen Reset)
+    ├── load_json.py                    ← lädt fm_rna + hso_personal (JSON)
+    ├── load_fm_inst.py                 ← lädt fm_inst (Semikolon-CSV, 86→24 Spalten)
+    ├── load_fm_gebaeude.py             ← lädt fm_gebaeude (repariert kaputte Zeilen)
+    ├── load_k_plz.py                   ← lädt k_plz (filtert eingebettete Header)
+    ├── mapping/                        ← Szenario 4: Account-Generator
+    └── images/                         ← Szenario 3: BLOB-Im-/Export
 ```
 
 ---

@@ -2,7 +2,8 @@
 
 > **Für wen:** Alle Projektmitglieder (Timo + Kommilitonen)  
 > **Zeitaufwand:** ca. 15–20 Minuten  
-> **Betriebssystem:** Windows 10/11
+> **Betriebssystem:** Windows 10/11, Linux oder macOS  
+> **Konvention:** Windows nutzt die PowerShell-Skripte (`.ps1`), Linux/macOS die Bash-Skripte (`.sh`) — gleiche Logik, gleiches Ergebnis.
 
 ---
 
@@ -30,9 +31,11 @@
 
 ### 1.2 Git
 
-1. Download: https://git-scm.com/download/win
-2. Installer ausführen (alle Standardoptionen belassen)
-3. Prüfen in PowerShell: `git --version`
+1. Download/Installation:
+   - **Windows:** https://git-scm.com/downloads
+   - **Linux:** Paketmanager, z. B. `sudo apt install git`
+   - **macOS:** `xcode-select --install` oder `brew install git`
+2. Prüfen im Terminal: `git --version`
 
 ### 1.3 Python (optional)
 
@@ -48,9 +51,9 @@ Account-Mapping) wird Python aber empfohlen.
 
 ## 2. Repo klonen
 
-PowerShell öffnen (Win+X → "Windows PowerShell" oder "Terminal"):
+Terminal öffnen — **Windows:** PowerShell (Win+X → "Terminal"), **Linux/macOS:** Terminal:
 
-```powershell
+```bash
 git clone <repo-url>
 cd INFM_Airbyte
 ```
@@ -61,8 +64,13 @@ cd INFM_Airbyte
 
 Das Installations-Skript übernimmt alles automatisch:
 
+**Windows (PowerShell):**
 ```powershell
 .\scripts\install.ps1
+```
+**Linux / macOS:**
+```bash
+bash scripts/install.sh
 ```
 
 Das Skript:
@@ -90,20 +98,16 @@ Danach weiter mit [Schritt 5: Airbyte aufsetzen](#5-airbyte-aufsetzen).
 
 Falls das automatische Skript nicht funktioniert:
 
-```powershell
-# 1. Konfigurationsdatei anlegen
-Copy-Item .env.example .env
-# Passwörter nach Bedarf in .env anpassen
+**1. Konfigurationsdatei anlegen** — Windows: `Copy-Item .env.example .env` · Linux/macOS: `cp .env.example .env` (Passwörter bei Bedarf in `.env` anpassen)
 
-# 2. Docker-Images vorab laden (spart Zeit)
-docker compose pull
-
-# 3. Stack starten
-docker compose up -d
-
-# 4. Status prüfen (warten bis alle "healthy" sind)
-docker compose ps
+**2.–4. Images laden, Stack starten, Status prüfen** (identisch auf allen Plattformen):
+```bash
+docker compose pull       # Images vorab laden
+docker compose up -d      # Stack starten
+docker compose ps         # warten bis alle "healthy" sind
 ```
+
+> Anschließend Testdaten laden: Loader ausführen (siehe Abschnitt „Testdaten wurden nicht geladen" im Troubleshooting) — auf allen Plattformen via Host-Python **oder** Docker-Fallback.
 
 ---
 
@@ -111,12 +115,17 @@ docker compose ps
 
 Airbyte laeuft ueber `abctl` (offizielles Airbyte CLI) in einem lokalen Kubernetes-Cluster (Kind) innerhalb von Docker Desktop.
 
+**Windows (PowerShell):**
 ```powershell
 .\scripts\setup-airbyte.ps1
 ```
+**Linux / macOS:**
+```bash
+bash scripts/setup-airbyte.sh
+```
 
 Das Skript:
-- laedt `abctl.exe` nach `C:\tools\airbyte\` und fuegt es zum PATH hinzu
+- installiert `abctl` (Windows: nach `C:\tools\airbyte\` + PATH; Linux/macOS: via offiziellem Installer `curl … get.airbyte.com`)
 - fragt nach Low-Resource-Mode (empfohlen bei weniger als 6 GB freiem RAM)
 - startet `abctl local install` (interaktiv: E-Mail + Organisations-Name eingeben)
 - zeigt die Login-Credentials an
@@ -203,7 +212,7 @@ docker logs hso_dest_mysql --tail 50
 
 Haeufige Ursachen:
 - **Port belegt:** Ein anderer Dienst nutzt Port 5433, 5434 oder 3306. In `.env` und `docker-compose.yml` anderen Port eintragen.
-- **Volumes aus altem Start:** `.\scripts\stop.ps1 -v` → dann neu starten
+- **Volumes aus altem Start:** Windows `.\scripts\stop.ps1 -v` · Linux/macOS `bash scripts/stop.sh -v` → dann neu starten
 
 ### Airbyte laeuft nicht / UI nicht erreichbar
 
@@ -223,17 +232,15 @@ abctl local install
 
 Airbyte-Connector-Container kommunizieren ueber `host.docker.internal` mit den Datenbanken. Pruefen:
 
-```powershell
-# DNS-Aufloesung testen (muss 192.168.65.x liefern)
+```bash
+# DNS-Aufloesung testen (muss 192.168.65.x liefern) - alle Plattformen
 docker run --rm alpine nslookup host.docker.internal
-
-# DB-Port vom Host aus pruefen
-Test-NetConnection -ComputerName localhost -Port 5433  # Source PG
-Test-NetConnection -ComputerName localhost -Port 5434  # Dest PG
-Test-NetConnection -ComputerName localhost -Port 3306  # Dest MySQL
 ```
+DB-Port vom Host prüfen (Ports 5433 / 5434 / 3306):
+- **Windows:** `Test-NetConnection -ComputerName localhost -Port 5433`
+- **Linux / macOS:** `nc -zv localhost 5433`
 
-Falls die Ports nicht erreichbar sind: DB-Stack laeuft nicht → `.\scripts\start.ps1`
+Falls die Ports nicht erreichbar sind, läuft der DB-Stack nicht → Windows `.\scripts\start.ps1`, Linux/macOS `bash scripts/start.sh`
 
 ### Airbyte: Passwortfehler bei Dest PostgreSQL (password authentication failed)
 
@@ -243,9 +250,13 @@ Externe Verbindungen via `host.docker.internal:5432` landen dort statt bei `hso_
 Pruefen ob ein zweiter Prozess auf Port 5432 lauscht:
 
 ```powershell
+# Windows:
 netstat -ano | findstr :5432
-# Wenn zwei verschiedene PIDs erscheinen:
-tasklist /fi "PID eq <pid>"   # postgres.exe = nativer Windows-Dienst
+tasklist /fi "PID eq <pid>"        # postgres.exe = nativer PostgreSQL-Dienst
+```
+```bash
+# Linux / macOS:
+ss -ltnp 'sport = :5432'           # oder: lsof -i :5432
 ```
 
 **Loesung:** Dest PostgreSQL laeuft deshalb auf Port **5434** (statt 5432).
@@ -258,13 +269,20 @@ In der Airbyte UI immer Port `5434` verwenden.
 Die relationalen Tabellen werden durch die Python-Loader **nach** dem Stackstart
 gefüllt (idempotent: `TRUNCATE` + `INSERT`). Einfach erneut ausführen:
 
+**Windows (PowerShell):**
 ```powershell
-.\scripts\install.ps1     # führt u.a. die Loader erneut aus
-# oder einzeln (Host-Python; sonst via Docker, siehe install.ps1):
-python scripts\load_json.py
-python scripts\load_fm_inst.py
-python scripts\load_fm_gebaeude.py
-python scripts\load_k_plz.py
+.\scripts\install.ps1
+```
+**Linux / macOS:**
+```bash
+bash scripts/install.sh
+```
+Oder die Loader einzeln (Host-Python mit `psycopg2`; sonst greift der Docker-Fallback der Skripte):
+```bash
+python3 scripts/load_json.py
+python3 scripts/load_fm_inst.py
+python3 scripts/load_fm_gebaeude.py
+python3 scripts/load_k_plz.py
 ```
 
 > Die CSV-`COPY`-Befehle im SQL-Init wurden entfernt — die Quell-CSVs sind zu
@@ -274,8 +292,8 @@ python scripts\load_k_plz.py
 
 ### Python-Pakete fehlen
 
-```powershell
-pip install requests psycopg2-binary
+```bash
+pip install requests psycopg2-binary      # Linux/macOS ggf. pip3 + virtuelle Umgebung (venv)
 ```
 
 ---

@@ -10,7 +10,7 @@ Offizielle Doku: https://docs.airbyte.com/platform/using-airbyte/getting-started
 | CPUs | 2 | 4+ |
 | RAM | 8 GB | 8 GB+ |
 
-> Der DB-Stack muss bereits laufen (`.\scripts\install.ps1`).
+> Der DB-Stack muss bereits laufen (Windows: `.\scripts\install.ps1` · Linux/macOS: `bash scripts/install.sh`).
 
 ---
 
@@ -21,21 +21,33 @@ lokalen Kubernetes-Cluster (Kind), der automatisch in Docker Desktop laeuft.
 
 ### Automatisch (empfohlen)
 
+**Windows (PowerShell):**
 ```powershell
 .\scripts\setup-airbyte.ps1
 ```
+**Linux / macOS:**
+```bash
+bash scripts/setup-airbyte.sh
+```
 
-Das Skript laedt `abctl` herunter, fuegt es zum PATH hinzu und startet die Installation.
+Das Skript installiert `abctl`, fuegt es zum PATH hinzu und startet die Installation.
 
-### Manuell (Windows)
+### Manuell
 
-1. Prozessorarchitektur pruefen: Win+I -> System -> Info -> Prozessor
-2. Passende Version von https://github.com/airbytehq/abctl/releases/latest laden
-   - AMD/Intel: `abctl-<version>-windows-amd64.zip`
-   - ARM: `abctl-<version>-windows-arm64.zip`
-3. ZIP entpacken, `abctl.exe` nach `C:\tools\airbyte\` kopieren
-4. Verzeichnis zum PATH hinzufuegen (Systemsteuerung -> Umgebungsvariablen)
-5. Neues Terminal oeffnen, pruefen: `abctl version`
+**Windows:**
+1. Passende Version von https://github.com/airbytehq/abctl/releases/latest laden
+   (`abctl-<version>-windows-amd64.zip` bzw. `-arm64`)
+2. ZIP entpacken, `abctl.exe` nach `C:\tools\airbyte\` kopieren
+3. Verzeichnis zum PATH hinzufuegen, neues Terminal, pruefen: `abctl version`
+
+**Linux / macOS:**
+```bash
+# offizieller Installer (erkennt OS/Arch automatisch):
+curl -LsfS https://get.airbyte.com | bash -
+abctl version
+```
+Alternativ das passende Release-Asset laden (`abctl-<version>-linux-amd64.tar.gz`
+bzw. `-darwin-arm64.tar.gz`), entpacken und `abctl` in den PATH legen.
 
 ---
 
@@ -279,8 +291,9 @@ Alle CSV-Sources verwenden **Storage Provider: `local: Local Filesystem (limited
 > zuverlaessige Loesung fuer lokale Dateien.
 
 > **Dateien manuell aktualisieren** (falls neue CSVs hinzugefuegt wurden):
-> ```powershell
-> docker run --rm -v oss_local_root:/local -v "PFAD\sql\source\data":/source:ro alpine sh -c "cp /source/*.csv /local/"
+> ```bash
+> # <REPO> = absoluter Pfad zum Repository (Windows-Pfade mit / schreiben)
+> docker run --rm -v oss_local_root:/local -v "<REPO>/sql/source/data":/source:ro alpine sh -c "cp /source/*.csv /local/"
 > ```
 
 ---
@@ -319,7 +332,9 @@ abctl local uninstall
 
 # Alles loeschen (inkl. Daten)
 abctl local uninstall --persisted
-Remove-Item -Recurse "$env:USERPROFILE\.airbyte\abctl"
+# danach Rest-Verzeichnis entfernen:
+#   Windows:      Remove-Item -Recurse "$env:USERPROFILE\.airbyte\abctl"
+#   Linux/macOS:  rm -rf ~/.airbyte/abctl
 ```
 
 ---

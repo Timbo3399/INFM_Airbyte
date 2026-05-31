@@ -35,8 +35,9 @@ Die Evaluation ist in **sechs Testszenarien** gegliedert (DB-Connector, Facility
 
 Das Setup ist vollständig skriptbasiert und reproduzierbar:
 
-- `scripts/install.ps1` startet den kompletten Datenbank-Stack (Source-PostgreSQL, Ziel-PostgreSQL, Ziel-MySQL, CSV-File-Server), wartet auf den `healthy`-Status und lädt die Testdaten.
-- `scripts/setup-airbyte.ps1` installiert Airbyte Community Edition über das offizielle CLI `abctl` in einem lokalen Kubernetes-Cluster (kind) innerhalb von Docker Desktop.
+- `scripts/install.ps1` (Windows) bzw. `scripts/install.sh` (Linux/macOS) startet den kompletten Datenbank-Stack (Source-PostgreSQL, Ziel-PostgreSQL, Ziel-MySQL, CSV-File-Server), wartet auf den `healthy`-Status und lädt die Testdaten.
+- `scripts/setup-airbyte.ps1` / `scripts/setup-airbyte.sh` installiert Airbyte Community Edition über das offizielle CLI `abctl` in einem lokalen Kubernetes-Cluster (kind) innerhalb von Docker Desktop.
+- **Plattformen:** Das Setup steht für **Windows, Linux und macOS** bereit (identische Logik, plattformspezifische Skripte).
 
 Alle vier Datenbank-/Server-Container laufen verifiziert im Zustand `healthy`.
 

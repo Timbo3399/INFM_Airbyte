@@ -12,9 +12,15 @@ kompakte, reproduzierbare Ablauf.
 
 ## Voraussetzungen
 
+**Windows (PowerShell):**
 ```powershell
 .\scripts\install.ps1        # DB-Stack + Testdaten (einmalig)
 .\scripts\setup-airbyte.ps1  # Airbyte via abctl (einmalig, interaktiv)
+```
+**Linux / macOS:**
+```bash
+bash scripts/install.sh
+bash scripts/setup-airbyte.sh
 ```
 
 Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local credentials`).
@@ -71,7 +77,8 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 
 ## Schritt 5 — Ergebnis verifizieren (Ziel-DB)
 
-```powershell
+```bash
+# funktioniert auf allen Plattformen (Docker)
 docker exec -it hso_dest_postgres psql -U destuser -d destdb -c "\dt"
 docker exec -it hso_dest_postgres psql -U destuser -d destdb -c "SELECT count(*) FROM fm_gebaeude;"
 docker exec -it hso_dest_postgres psql -U destuser -d destdb -c "SELECT count(*) FROM k_plz;"

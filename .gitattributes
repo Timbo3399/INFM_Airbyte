@@ -1,0 +1,7 @@
+# Zeilenenden plattformübergreifend stabil halten.
+# Wichtig: .sh MUSS LF behalten, sonst scheitert die Ausführung auf Linux/macOS
+# ("bad interpreter: /usr/bin/env bash^M").
+*.sh    text eol=lf
+*.py    text eol=lf
+*.sql   text eol=lf
+*.ps1   text eol=crlf
