@@ -4,6 +4,20 @@
 
 ---
 
+## Dokumentation
+
+| Dokument | Inhalt |
+|---|---|
+| [docs/installation-guide.md](docs/installation-guide.md) | Schritt-für-Schritt-Installation + Troubleshooting |
+| [docs/architektur.md](docs/architektur.md) | Architektur: Komponenten, Datenfluss, Netzwerk, Ports |
+| [docs/zugang.md](docs/zugang.md) | Zugang zu Airbyte-UI & DBs (inkl. Betreuer-Zugang) |
+| [docs/airbyte-setup.md](docs/airbyte-setup.md) | Airbyte (abctl) installieren, Sources/Destinations |
+| [docs/etl-prozess.md](docs/etl-prozess.md) | Runbook: erster ETL-Prozess (mit Screenshot-Punkten) |
+| [docs/testszenarien.md](docs/testszenarien.md) | Die 6 Evaluations-Szenarien |
+| [docs/zwischenbericht.md](docs/zwischenbericht.md) | Zwischenbericht (Abgabe 7.6.) |
+
+---
+
 ## Architektur
 
 ```
@@ -117,8 +131,12 @@ INFM_Airbyte/
 │
 ├── docs/
 │   ├── installation-guide.md   ← ausführliche Installationsanleitung
+│   ├── architektur.md          ← Architektur (Komponenten, Datenfluss, Netz)
+│   ├── zugang.md               ← Zugang zu UI/DBs (inkl. Betreuer-Zugang)
 │   ├── airbyte-setup.md        ← Airbyte installieren & konfigurieren
-│   └── testszenarien.md        ← Konkrete Testfälle
+│   ├── etl-prozess.md          ← Runbook: erster ETL-Prozess
+│   ├── testszenarien.md        ← Konkrete Testfälle
+│   └── zwischenbericht.md      ← Zwischenbericht (Abgabe 7.6.)
 │
 └── scripts/
     ├── install.ps1             ← Komplett-Setup (DB-Stack + Testdaten)
