@@ -1,5 +1,5 @@
 """
-Szenario 4: Account-IDs nach HSO-Schema generieren (Logik aus hso_accountgenerator.js).
+Szenario 4: Account-IDs nach HSO-Schema generieren (Logik aus data/js/hso_accountgenerator.js).
 Aufruf: python scripts/mapping/generate_accounts.py
 Schreibt user_id zurück in hso_students der source-postgres.
 """

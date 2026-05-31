@@ -8,13 +8,13 @@ Ziel: Evaluierung von Airbyte als ETL-Tool für die Hochschul-IT (Ersatz für Ta
 
 | Datei / Tabelle | Format | Inhalt | Zeilen | In source-postgres |
 |-----------------|--------|--------|--------|--------------------|
-| `hso_students` | Pipe-CSV | Studierende (anonym.) | ~1.500 | `hso_students` |
-| `fm_gebaeude` | CSV | Gebaeude der Hochschule | 27 | `fm_gebaeude` |
-| `fm_inst` | Semikolon-CSV | Institute / Org-Einheiten | ~120 | `fm_inst` |
-| `fm_stamm` | SQL/CSV | Raumstammdaten (geb+inst) | variabel | `fm_stamm` |
-| `k_plz` | CSV | PLZ-Verzeichnis Deutschland | ~37.500 | `k_plz` |
-| `fm_rna.json` | JSON | Raumnutzungsarten | ~50 | `fm_rna` (via load_json.py) |
-| `hso_personal.json` | JSON | Personal HSO (anonym.) | ~300 | `hso_personal` (via load_json.py) |
+| `hso_students` | Pipe-CSV | Studierende (anonym.) | ~1.500 | ⚠️ nicht in Source-DB (CSV defekt) – nur via File-Connector |
+| `fm_gebaeude` | CSV | Gebaeude der Hochschule | 25 | `fm_gebaeude` (via load_fm_gebaeude.py) |
+| `fm_inst` | Semikolon-CSV | Institute / Org-Einheiten | ~2.080 | `fm_inst` (via load_fm_inst.py) |
+| `fm_stamm` | - | Raumstammdaten (geb+inst) | 0 (leer) | `fm_stamm` (Tabelle vorhanden, ohne Daten) |
+| `k_plz` | CSV | PLZ-Verzeichnis Deutschland | ~34.000 | `k_plz` (via load_k_plz.py) |
+| `fm_rna.json` | JSON | Raumnutzungsarten | ~380 | `fm_rna` (via load_json.py) |
+| `hso_personal.json` | JSON | Personal HSO (anonym.) | ~870 | `hso_personal` (via load_json.py) |
 | `k_res*.csv` | Semikolon-CSV | Klassifikations-Lookups | je ~5-20 | - |
 | `hso_accountgenerator.js` | JavaScript | Account-Name-Logik | - | - |
 
@@ -178,7 +178,7 @@ conn.close()
 
 **Ziel:** Anonymisierte Daten mit realistischen Werten befüllen; Account-IDs generieren; in neue Tabellen schreiben.
 
-**Account-Generierungs-Logik** (`data/hso_accountgenerator.js`):
+**Account-Generierungs-Logik** (`data/js/hso_accountgenerator.js`):
 ```
 account = (Vorname[0] + Nachname).toLowerCase()[0:8]
           (Umlaute ersetzen: ä→ae, ö→oe, ü→ue, ß→ss)

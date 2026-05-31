@@ -18,7 +18,7 @@
 │                                       │                 │
 │  ┌──────────────────┐  ┌──────────────▼────────────┐    │
 │  │   dest-mysql     │  │     dest-postgres         │    │
-│  │   localhost:3306 │  │     localhost:5432        │    │
+│  │   localhost:3306 │  │     localhost:5434        │    │
 │  └──────────────────┘  └───────────────────────────┘    │
 │                                                         │
 │  Netzwerk: airbyte_net (alle Container verbunden)       │
@@ -29,11 +29,11 @@
 
 | Tabelle | Inhalt |
 |---------|--------|
-| `hso_students` | Studierende (anonymisiert, ~1.500 Einträge) |
-| `fm_gebaeude` | Gebäude der Hochschule Offenburg (27) |
-| `fm_inst` | Institute & Organisationseinheiten |
-| `fm_stamm` | Raumstammdaten (verknüpft Gebäude + Institut) |
-| `k_plz` | PLZ-Verzeichnis Deutschland (~37.500) |
+| `hso_students` | Studierende – ⚠️ **nicht in Source-DB** (CSV strukturell defekt), nur via File-Connector |
+| `fm_gebaeude` | Gebäude der Hochschule Offenburg (25) |
+| `fm_inst` | Institute & Organisationseinheiten (~2.080) |
+| `fm_stamm` | Raumstammdaten – Tabelle vorhanden, aktuell ohne Daten |
+| `k_plz` | PLZ-Verzeichnis Deutschland (~34.000) |
 
 **6 Testszenarien** → [docs/testszenarien.md](docs/testszenarien.md):
 
@@ -58,7 +58,7 @@
 |------|----------|
 | Docker Desktop | https://www.docker.com/products/docker-desktop/ |
 | Git | https://git-scm.com/download/win |
-| Python ≥ 3.11 | https://www.python.org/downloads/ |
+| Python ≥ 3.11 *(optional)* | https://www.python.org/downloads/ — nur falls ohne Docker-Fallback gewünscht |
 
 ### Schritt 2: Repo klonen
 
@@ -110,15 +110,27 @@ INFM_Airbyte/
 │
 ├── data/
 │   ├── csv/k_res/              ← k_res1–13 CSV-Dateien (für File-Connector)
+│   ├── js/                     ← hso_accountgenerator.js (Account-Logik, Referenz)
 │   └── json/                   ← JSON-Dateien (fm_rna, hso_personal)
 │
+├── docker/fileserver/          ← nginx-Config für den CSV-File-Server
+│
 ├── docs/
+│   ├── installation-guide.md   ← ausführliche Installationsanleitung
 │   ├── airbyte-setup.md        ← Airbyte installieren & konfigurieren
 │   └── testszenarien.md        ← Konkrete Testfälle
 │
 └── scripts/
+    ├── install.ps1             ← Komplett-Setup (DB-Stack + Testdaten)
+    ├── setup-airbyte.ps1       ← Airbyte via abctl installieren
     ├── start.ps1               ← Stack starten
-    └── stop.ps1                ← Stack stoppen (-v für vollständigen Reset)
+    ├── stop.ps1                ← Stack stoppen (-v für vollständigen Reset)
+    ├── load_json.py            ← lädt fm_rna + hso_personal (JSON)
+    ├── load_fm_inst.py         ← lädt fm_inst (Semikolon-CSV, 86→24 Spalten)
+    ├── load_fm_gebaeude.py     ← lädt fm_gebaeude (repariert kaputte Zeilen)
+    ├── load_k_plz.py           ← lädt k_plz (filtert eingebettete Header)
+    ├── mapping/                ← Szenario 4: Account-Generator
+    └── images/                 ← Szenario 3: BLOB-Im-/Export
 ```
 
 ---
@@ -130,7 +142,7 @@ INFM_Airbyte/
 | Service | Host | Port | DB | User | Password |
 |---------|------|------|----|------|----------|
 | Source PostgreSQL | `localhost` | `5433` | `sourcedb` | `sourceuser` | `sourcepassword` |
-| Dest PostgreSQL | `localhost` | `5432` | `destdb` | `destuser` | `destpassword` |
+| Dest PostgreSQL | `localhost` | `5434` | `destdb` | `destuser` | `destpassword` |
 | Dest MySQL | `localhost` | `3306` | `destdb` | `destuser` | `destpassword` |
 
 ### Für Airbyte (Container-zu-Container)

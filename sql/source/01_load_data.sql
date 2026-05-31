@@ -1,29 +1,24 @@
--- Testdaten aus CSV-Dateien laden
--- COPY liest Dateien aus dem Container-Pfad /docker-entrypoint-initdb.d/data/
-
-COPY fm_gebaeude (
-    db_einfuegemarke, geb_nr, geb, geb2, baujahr, besitz, art, gebber_nr,
-    hs_nr, qkz, fnw, pers_nr, denkmal_nr, ort_nr, stra_nr, haus_nr,
-    gemark_nr, flur_nr, flurst_nr, miete, bauwerk, b_grad, l_grad, bem, text_geb, kurz_geb
-)
-FROM '/docker-entrypoint-initdb.d/data/fm_gebaeude.csv'
-WITH (FORMAT CSV, NULL '');
-
-COPY k_plz (
-    db_einfuegemarke, plz, ueberkey, art, aikz, grokz, ort, krskfz, krs_astat, vv_bez
-)
-FROM '/docker-entrypoint-initdb.d/data/k_plz.csv'
-WITH (FORMAT CSV, NULL '');
-
--- hso_students: pipe-delimited, with header, double-quoted fields
-COPY hso_students (
-    mtknr, firstname, surname, allfirstnames, academicTitle,
-    dateofbirth, birthcity, country, gender, nationalityId, secondNationality,
-    accounts, hochschulEmail, privateEmail, phone, currentSem,
-    immaDat, exmaDat, exmaReason, studyStatus, universitysemester, kollegsemester,
-    practicalsemester, leavesemester, stg_key, stg, fach, degree, poversion,
-    fakultaet, stort, studentstatus, studysemester, curriculumsemester,
-    progressvector, subjectfocus, h1_syncVers, dbversion, createdat, updatedat
-)
-FROM '/docker-entrypoint-initdb.d/data/hso_students.csv'
-WITH (FORMAT CSV, DELIMITER '|', HEADER TRUE, QUOTE '"', NULL '');
+-- Testdaten werden NICHT mehr per COPY in dieser Init-Datei geladen.
+--
+-- Grund: Die Quell-CSVs sind fuer ein direktes COPY zu unsauber:
+--   * eingebettete Header-Zeilen mitten in den Daten (k_plz, fm_gebaeude)
+--   * unquotierte Trennzeichen in Textfeldern (fm_gebaeude, fm_inst)
+--   * doppelt-kodierte Umlaute ("GebÃ¤ude") und vereinzelt NUL-Bytes (fm_inst)
+-- COPY laeuft im Postgres-Init mit ON_ERROR_STOP und brach beim ersten Fehler ab,
+-- wodurch ALLE folgenden Tabellen leer blieben.
+--
+-- Stattdessen laden tolerante Python-Loader die Daten NACH dem Container-Start.
+-- Sie werden von scripts/install.ps1 ausgefuehrt (Host-Python ODER Docker-Fallback):
+--   fm_gebaeude  -> scripts/load_fm_gebaeude.py
+--   k_plz        -> scripts/load_k_plz.py
+--   fm_inst      -> scripts/load_fm_inst.py
+--   fm_rna       -> scripts/load_json.py
+--   hso_personal -> scripts/load_json.py
+--
+-- Nicht geladen:
+--   * hso_students.csv ist strukturell defekt (Datenzeilen haben mehr Spalten als
+--     der eigene Header). Studierendendaten daher ueber den Airbyte File-Connector
+--     beziehen (siehe docs/airbyte-setup.md, Abschnitt 7).
+--   * fm_stamm hat keine Quelldatei -> Tabelle bleibt leer.
+--
+-- Die Tabellen-Schemata werden weiterhin in 00_tables.sql angelegt.

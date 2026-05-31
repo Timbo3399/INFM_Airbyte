@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS k_plz (
     aikz              VARCHAR(5),
     grokz             VARCHAR(5),
     ort               VARCHAR(60),
-    krskfz            VARCHAR(10),
+    krskfz            VARCHAR(50),   -- enthaelt teils Kreis-Namen (z.B. "Kr Hzgt Lauenburg")
     krs_astat         VARCHAR(10),
     vv_bez            VARCHAR(60)
 );

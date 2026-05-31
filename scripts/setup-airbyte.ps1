@@ -67,38 +67,47 @@ if (Test-Path $ABCTL_EXE) {
 } else {
     Write-Host "    Lade aktuelle Version von GitHub..." -ForegroundColor DarkGray
 
-    # Prozessorarchitektur ermitteln
-    $arch = if ([System.Environment]::Is64BitOperatingSystem) {
-        if ((Get-WmiObject Win32_Processor).Architecture -eq 12) { "arm64" } else { "amd64" }
-    } else { "amd64" }
+    # Prozessorarchitektur ermitteln (funktioniert in Windows PowerShell 5.1 UND PowerShell 7+;
+    # Get-WmiObject existiert in PowerShell 7 nicht mehr).
+    $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
 
     try {
         $release = Invoke-RestMethod -Uri $RELEASES_URL -UseBasicParsing
-        $assetName = "abctl_Windows_$arch.zip"
-        $asset = $release.assets | Where-Object { $_.name -eq $assetName } | Select-Object -First 1
+        # Asset-Namensschema: abctl-<tag>-windows-<arch>.zip  (z.B. abctl-v0.30.4-windows-amd64.zip)
+        $asset = $release.assets |
+            Where-Object { $_.name -like "abctl-*-windows-$arch.zip" } |
+            Select-Object -First 1
 
         if (-not $asset) {
-            Write-Fail "Kein passendes Asset gefunden ($assetName)."
+            Write-Fail "Kein Windows-$arch-Asset im Release $($release.tag_name) gefunden."
             Write-Host "  Manuell herunterladen: https://github.com/airbytehq/abctl/releases/latest" -ForegroundColor Yellow
             exit 1
         }
 
         $zipPath = "$AIRBYTE_DIR\abctl.zip"
         Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath -UseBasicParsing
-        Expand-Archive -Path $zipPath -DestinationPath $AIRBYTE_DIR -Force
-        Remove-Item $zipPath
 
-        if (-not (Test-Path $ABCTL_EXE)) {
-            Write-Fail "abctl.exe nach dem Entpacken nicht gefunden."
+        # Das ZIP enthaelt abctl.exe in einem Unterordner (abctl-<tag>-windows-<arch>\abctl.exe).
+        # Daher in ein Temp-Verzeichnis entpacken und die EXE nach $AIRBYTE_DIR heben.
+        $tmpDir = Join-Path $AIRBYTE_DIR "_extract"
+        if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
+        Expand-Archive -Path $zipPath -DestinationPath $tmpDir -Force
+        $foundExe = Get-ChildItem -Path $tmpDir -Recurse -Filter "abctl.exe" | Select-Object -First 1
+        if (-not $foundExe) {
+            Write-Fail "abctl.exe wurde im Archiv nicht gefunden."
             exit 1
         }
+        Copy-Item $foundExe.FullName $ABCTL_EXE -Force
+        Remove-Item $tmpDir -Recurse -Force
+        Remove-Item $zipPath -Force
+
         Write-Ok "abctl heruntergeladen (Version: $($release.tag_name))."
     } catch {
         Write-Fail "Download fehlgeschlagen: $_"
         Write-Host ""
         Write-Host "  Manuell installieren:" -ForegroundColor Yellow
         Write-Host "  1. https://github.com/airbytehq/abctl/releases/latest" -ForegroundColor Gray
-        Write-Host "  2. abctl_Windows_amd64.zip herunterladen und entpacken" -ForegroundColor Gray
+        Write-Host "  2. abctl-<version>-windows-amd64.zip herunterladen und entpacken" -ForegroundColor Gray
         Write-Host "  3. abctl.exe nach $AIRBYTE_DIR kopieren" -ForegroundColor Gray
         exit 1
     }

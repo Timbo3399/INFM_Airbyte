@@ -18,11 +18,11 @@ from datetime import datetime, date
 # --- Verbindungsparameter ---------------------------------------------------
 
 DB = dict(
-    host="localhost",
-    port=5433,
-    dbname="sourcedb",
-    user="sourceuser",
-    password="sourcepassword",
+    host=os.getenv("SOURCE_PG_HOST", "localhost"),
+    port=int(os.getenv("SOURCE_PG_PORT", "5433")),
+    dbname=os.getenv("SOURCE_PG_DB", "sourcedb"),
+    user=os.getenv("SOURCE_PG_USER", "sourceuser"),
+    password=os.getenv("SOURCE_PG_PASSWORD", "sourcepassword"),
 )
 
 # --- Hilfsfunktionen --------------------------------------------------------
@@ -157,7 +157,7 @@ def load_hso_personal(cur, rows: list):
 def main():
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    print("Verbinde mit source-postgres (localhost:5433)...")
+    print(f"Verbinde mit source-postgres ({DB['host']}:{DB['port']})...")
     conn = psycopg2.connect(**DB)
     conn.autocommit = False
     cur = conn.cursor()

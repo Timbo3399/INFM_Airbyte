@@ -8,10 +8,14 @@
 #   4. Docker-Images laden
 #   5. Datenbank-Stack starten
 #   6. Warten bis alle Container healthy sind
-#   7. JSON-Daten in source-postgres laden (fm_rna, hso_personal)
+#   7. Testdaten in source-postgres laden (tolerante Python-Loader: load_json,
+#      load_fm_inst, load_fm_gebaeude, load_k_plz - Host-Python ODER Docker-Fallback)
 #   8. Verbindungsinfos ausgeben
 
 $ErrorActionPreference = "Stop"
+# Exit-Codes nativer Befehle (docker, python, pip) selbst auswerten, statt dass
+# PowerShell 7.4+ bei jedem Nicht-Null-Exit sofort abbricht.
+$PSNativeCommandUseErrorActionPreference = $false
 $ROOT = Split-Path $PSScriptRoot -Parent
 
 # --- Hilfsfunktionen ---------------------------------------------------------
@@ -73,15 +77,24 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Ok "docker compose verfuegbar ($($composeVersion -replace 'Docker Compose version ',''))."
 
-# Python (benoetigt fuer JSON-Daten laden + Szenarien 3 und 4)
-$pythonAvailable = $false
-if (Get-Command python -ErrorAction SilentlyContinue) {
-    $pyVer = python --version 2>&1
-    Write-Ok "Python gefunden ($pyVer)."
-    $pythonAvailable = $true
-} else {
-    Write-Warn "Python nicht gefunden - JSON-Daten koennen nicht geladen werden."
-    Write-Warn "Installieren: https://www.python.org/downloads/ (>= 3.11, 'Add to PATH' aktivieren)"
+# Python (optional - JSON-Daten koennen sonst via Docker geladen werden).
+# Achtung: "python" ist auf Windows haeufig nur der Microsoft-Store-Platzhalter, den
+# Get-Command zwar findet, der aber keine echte Version liefert. Daher die echte
+# Versionsausgabe pruefen und py/python/python3 der Reihe nach testen.
+$pythonCmd = $null
+foreach ($candidate in @("py", "python", "python3")) {
+    if (-not (Get-Command $candidate -ErrorAction SilentlyContinue)) { continue }
+    try { $verOut = (& $candidate --version 2>&1) | Out-String } catch { continue }
+    if ($verOut -match "Python\s+3") {
+        $pythonCmd = $candidate
+        Write-Ok "Python gefunden ($($verOut.Trim()), via '$candidate')."
+        break
+    }
+}
+if (-not $pythonCmd) {
+    Write-Warn "Kein echtes Python gefunden (evtl. nur Microsoft-Store-Platzhalter)."
+    Write-Warn "JSON-Daten werden stattdessen ueber einen Docker-Container geladen (kein Python noetig)."
+    Write-Warn "Optional installieren: winget install Python.Python.3.12  (oder https://www.python.org/downloads/)"
 }
 
 # --- 2. .env erstellen -------------------------------------------------------
@@ -169,25 +182,39 @@ if ($elapsed -ge $maxWaitSec) {
 
 # --- 7. JSON-Daten in source-postgres laden ----------------------------------
 
-Write-Step "JSON-Daten laden (fm_rna, hso_personal)"
+Write-Step "Testdaten laden (fm_rna, hso_personal, fm_inst, fm_gebaeude, k_plz)"
 
-if ($pythonAvailable) {
-    # psycopg2-binary sicherstellen
-    $pipOut = python -m pip show psycopg2-binary 2>&1
+if ($pythonCmd) {
+    # Host-Python vorhanden: psycopg2-binary sicherstellen und Loader direkt ausfuehren.
+    & $pythonCmd -m pip show psycopg2-binary 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
         Write-Host "    Installiere psycopg2-binary..." -ForegroundColor DarkGray
-        python -m pip install psycopg2-binary --quiet
+        & $pythonCmd -m pip install psycopg2-binary --quiet
     }
-
-    python "$ROOT\scripts\load_json.py"
-    if ($LASTEXITCODE -eq 0) {
-        Write-Ok "JSON-Daten erfolgreich geladen."
+    $loadOk = $true
+    foreach ($loader in @("load_json.py", "load_fm_inst.py", "load_fm_gebaeude.py", "load_k_plz.py")) {
+        & $pythonCmd "$ROOT\scripts\$loader"
+        if ($LASTEXITCODE -ne 0) { $loadOk = $false }
+    }
+    if ($loadOk) {
+        Write-Ok "Testdaten erfolgreich geladen."
     } else {
-        Write-Warn "JSON-Laden fehlgeschlagen - manuell ausfuehren: python scripts\load_json.py"
+        Write-Warn "Laden (teilweise) fehlgeschlagen - Loader manuell ausfuehren: scripts\load_*.py"
     }
 } else {
-    Write-Warn "Python nicht verfuegbar - JSON-Daten nicht geladen."
-    Write-Warn "Nach Python-Installation ausfuehren: python scripts\load_json.py"
+    # Kein Host-Python: Loader in einem Wegwerf-Container ausfuehren. Verbindet sich ueber
+    # das Docker-Netz airbyte_net direkt mit hso_source_postgres:5432.
+    Write-Host "    Lade Daten ueber python:3.12-slim Container (kein Host-Python noetig)..." -ForegroundColor DarkGray
+    docker run --rm --network airbyte_net `
+        --env-file "$ROOT\.env" `
+        -e SOURCE_PG_HOST=hso_source_postgres -e SOURCE_PG_PORT=5432 `
+        -v "${ROOT}:/app" -w /app python:3.12-slim `
+        sh -c "pip install --quiet psycopg2-binary && python scripts/load_json.py && python scripts/load_fm_inst.py && python scripts/load_fm_gebaeude.py && python scripts/load_k_plz.py"
+    if ($LASTEXITCODE -eq 0) {
+        Write-Ok "Testdaten erfolgreich geladen (via Docker)."
+    } else {
+        Write-Warn "Laden via Docker fehlgeschlagen. Alternativ mit Host-Python: scripts\load_*.py einzeln ausfuehren."
+    }
 }
 
 # --- 8. Ergebnis und naechste Schritte ---------------------------------------

@@ -31,8 +31,8 @@ Das Skript laedt `abctl` herunter, fuegt es zum PATH hinzu und startet die Insta
 
 1. Prozessorarchitektur pruefen: Win+I -> System -> Info -> Prozessor
 2. Passende Version von https://github.com/airbytehq/abctl/releases/latest laden
-   - AMD/Intel: `abctl_Windows_amd64.zip`
-   - ARM: `abctl_Windows_arm64.zip`
+   - AMD/Intel: `abctl-<version>-windows-amd64.zip`
+   - ARM: `abctl-<version>-windows-arm64.zip`
 3. ZIP entpacken, `abctl.exe` nach `C:\tools\airbyte\` kopieren
 4. Verzeichnis zum PATH hinzufuegen (Systemsteuerung -> Umgebungsvariablen)
 5. Neues Terminal oeffnen, pruefen: `abctl version`
@@ -136,16 +136,20 @@ Nach erfolgreichem Setup sind folgende Streams verfuegbar:
 
 | Stream | Inhalt |
 |--------|--------|
-| `fm_gebaeude` | Gebaeude der Hochschule (27 Zeilen) |
-| `fm_inst` | Institute / Org-Einheiten (~120 Zeilen) |
-| `fm_stamm` | Raumstammdaten |
-| `k_plz` | PLZ-Verzeichnis (~37.500 Zeilen) |
-| `hso_students` | Studierende anonymisiert (~1.500 Zeilen) |
-| `fm_rna` | Raumnutzungsarten (~50 Zeilen) |
-| `hso_personal` | Personal anonymisiert (~300 Zeilen) |
+| `fm_gebaeude` | Gebaeude der Hochschule (25 Zeilen) |
+| `fm_inst` | Institute / Org-Einheiten (~2.080 Zeilen) |
+| `fm_stamm` | Raumstammdaten (Tabelle vorhanden, aktuell ohne Daten) |
+| `k_plz` | PLZ-Verzeichnis (~34.000 Zeilen) |
+| `hso_students` | ⚠️ NICHT als PG-Stream verfuegbar (CSV defekt) – stattdessen File-Connector (Abschnitt 7) |
+| `fm_rna` | Raumnutzungsarten (~380 Zeilen) |
+| `hso_personal` | Personal anonymisiert (~870 Zeilen) |
 
-> `fm_rna` und `hso_personal` werden durch `scripts/load_json.py` geladen
-> (laeuft automatisch in `install.ps1`). Manuell: `python scripts\load_json.py`
+> Die relationalen Quell-Tabellen werden nach dem Stackstart durch tolerante
+> Python-Loader gefuellt (laufen automatisch in `install.ps1`, Host-Python ODER
+> Docker-Fallback): `load_json.py` (fm_rna, hso_personal), `load_fm_inst.py`,
+> `load_fm_gebaeude.py`, `load_k_plz.py`.
+> `hso_students` ist ausgenommen (CSV strukturell defekt) und wird unten als
+> File-Connector-Quelle eingebunden.
 
 ---
 

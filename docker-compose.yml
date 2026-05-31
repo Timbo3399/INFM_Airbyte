@@ -98,10 +98,13 @@ services:
     networks:
       - airbyte_net
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/k_plz.csv"]
+      # 127.0.0.1 statt localhost: "localhost" loest im Container zuerst auf ::1 (IPv6) auf,
+      # nginx lauscht hier aber nur auf IPv4 (0.0.0.0:80) -> sonst dauerhaft "unhealthy".
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/k_plz.csv"]
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 10s
 
 volumes:
   source_pg_data:

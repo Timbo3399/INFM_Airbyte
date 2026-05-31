@@ -5,6 +5,9 @@
 airbyte/
 .airbyte/
 
+# Lokal heruntergeladene Airbyte CLI (Binary/ZIP, nicht committen)
+abctl/
+
 # Große Datendateien
 data.zip
 *.dump

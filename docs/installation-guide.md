@@ -34,11 +34,15 @@
 2. Installer ausführen (alle Standardoptionen belassen)
 3. Prüfen in PowerShell: `git --version`
 
-### 1.3 Python (für Szenarien 3 & 4)
+### 1.3 Python (optional)
+
+Für das Standard-Setup **nicht zwingend nötig**: `install.ps1` lädt die Testdaten
+sonst über einen Wegwerf-Docker-Container. Für die Szenarien 3 & 4 (Bild-Im/Export,
+Account-Mapping) wird Python aber empfohlen.
 
 1. Download: https://www.python.org/downloads/ (≥ 3.11)
 2. Installer ausführen → **"Add Python to PATH" aktivieren!**
-3. Prüfen: `python --version`
+3. Prüfen: `python --version` (muss `Python 3.x` ausgeben, nicht den Store-Platzhalter)
 
 ---
 
@@ -68,7 +72,9 @@ Das Skript:
 - laedt Docker-Images herunter
 - startet alle vier Container (source-postgres, dest-postgres, dest-mysql, file-server)
 - wartet bis alle Container healthy sind
-- laedt JSON-Daten in source-postgres (`fm_rna`, `hso_personal`)
+- laedt die Testdaten in source-postgres via tolerante Python-Loader
+  (`fm_rna`, `hso_personal`, `fm_inst`, `fm_gebaeude`, `k_plz`) — Host-Python optional,
+  sonst automatischer Docker-Fallback (`hso_students` ist ausgenommen, s. u.)
 - zeigt Verbindungsinfos an
 
 **Erfolgreich, wenn die Ausgabe endet mit:**
@@ -249,13 +255,22 @@ In der Airbyte UI immer Port `5434` verwenden.
 
 ### Testdaten wurden nicht geladen (source-postgres ist leer)
 
-Die COPY-Befehle laufen nur beim **ersten** Container-Start. Falls der Container bereits existiert, laufen die Init-Scripts nicht erneut.
+Die relationalen Tabellen werden durch die Python-Loader **nach** dem Stackstart
+gefüllt (idempotent: `TRUNCATE` + `INSERT`). Einfach erneut ausführen:
 
 ```powershell
-# Volume löschen und neu starten (Daten gehen verloren!)
-docker compose down -v
-docker compose up -d
+.\scripts\install.ps1     # führt u.a. die Loader erneut aus
+# oder einzeln (Host-Python; sonst via Docker, siehe install.ps1):
+python scripts\load_json.py
+python scripts\load_fm_inst.py
+python scripts\load_fm_gebaeude.py
+python scripts\load_k_plz.py
 ```
+
+> Die CSV-`COPY`-Befehle im SQL-Init wurden entfernt — die Quell-CSVs sind zu
+> unsauber für ein direktes `COPY` (eingebettete Header, unquotierte Trennzeichen,
+> doppelt-kodierte Umlaute). `hso_students` bleibt in der Source-DB leer (CSV
+> strukturell defekt) und wird via Airbyte File-Connector geladen.
 
 ### Python-Pakete fehlen
 
