@@ -35,7 +35,7 @@ Die vier erstgenannten Container werden über `docker-compose.yml` verwaltet. Ai
             │   └────────────────────┘  host.docker.   │   Worker/Connector-Pods   │ │
             │   ┌────────────────────┐  internal       └─────────────┬─────────────┘ │
   Browser   │   │  hso_fileserver     │◄─ 8888 ──────────────────────┤ schreibt       │
-  ──8888──► │   │  CSV + /local/      │                              │ Ziele          │
+  ──8888──► │   │  CSV (HTTP-Browse)  │                              │ Ziele          │
             │   └────────────────────┘                ┌─────────────▼─────────────┐  │
             │   ┌────────────────────┐  5434           │  hso_dest_postgres        │  │
   ──5434──► │   │  hso_dest_postgres  │◄────────────────┤  (leer → Airbyte füllt)   │  │
@@ -72,14 +72,8 @@ Schema: `sql/source/00_tables.sql`. Die Daten werden **nach** dem Containerstart
 
 `hso_students` (CSV defekt) und `fm_stamm` (keine Quelldatei) sind aktuell nicht in der Source-DB — siehe Zwischenbericht, Kap. 6.
 
-## 7. Ports & Zugang (Kurzreferenz)
+## 7. Ports & Zugang
 
-| Dienst | Lokal (DB-Tools) | In Airbyte-UI eintragen |
-|---|---|---|
-| Source PostgreSQL | `localhost:5433` | `host.docker.internal:5433` |
-| Ziel PostgreSQL | `localhost:5434` | `host.docker.internal:5434` |
-| Ziel MySQL | `localhost:3306` | `host.docker.internal:3306` |
-| File-Server (HTTP) | `http://localhost:8888` | `/local/<datei>.csv` |
-| Airbyte UI | `http://localhost:8000` | — |
-
-Zugangsdaten und Betreuer-Zugang: siehe [zugang.md](zugang.md).
+Vollständige Port-/Host-/Zugangsdaten-Referenz (DB-Tools `localhost`, Airbyte-UI
+`host.docker.internal`) sowie der Betreuer-Zugang stehen zentral in
+**[zugang.md](zugang.md#3-verbindungsparameter-zentrale-referenz)**.

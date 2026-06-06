@@ -16,6 +16,8 @@
 | [docs/testszenarien.md](docs/testszenarien.md) | Die 6 Evaluations-Szenarien |
 | [docs/zwischenbericht.md](docs/zwischenbericht.md) | Zwischenbericht (Abgabe 7.6.) |
 
+> Offizielle Airbyte-Doku: <https://docs.airbyte.com/> · [abctl (Deployment)](https://docs.airbyte.com/platform/deploying-airbyte/abctl) · [File Source Connector](https://docs.airbyte.com/integrations/sources/file)
+
 ---
 
 ## Architektur
@@ -43,7 +45,7 @@
 
 | Tabelle | Inhalt |
 |---------|--------|
-| `hso_students` | Studierende – ⚠️ **nicht in Source-DB** (CSV strukturell defekt), nur via File-Connector |
+| `hso_students` | Studierende – ⚠️ Tabelle vorhanden, aber **leer (0 Zeilen)**: CSV strukturell defekt → Studierendendaten via File-Connector |
 | `fm_gebaeude` | Gebäude der Hochschule Offenburg (25) |
 | `fm_inst` | Institute & Organisationseinheiten (~2.080) |
 | `fm_stamm` | Raumstammdaten – Tabelle vorhanden, aktuell ohne Daten |
@@ -129,12 +131,10 @@ INFM_Airbyte/
 ├── sql/
 │   └── source/
 │       ├── 00_tables.sql       ← Tabellen-Schema für source-postgres
-│       ├── 01_load_data.sql    ← COPY-Befehle (lädt CSV-Testdaten)
-│       └── data/               ← CSV-Dateien (werden per COPY geladen)
-│           ├── hso_students.csv
-│           ├── fm_gebaeude.csv
-│           ├── fm_inst.csv
-│           └── k_plz.csv
+│       ├── 01_load_data.sql    ← nur Doku-Hinweis (COPY entfernt, s. u.)
+│       └── data/               ← CSV-Quelldateien (per Python-Loader geladen, NICHT
+│                                  per COPY; zugleich /local-Mount für File-Connector):
+│                                  hso_students, fm_gebaeude, fm_inst, k_plz, anredetitel
 │
 ├── data/
 │   ├── csv/k_res/              ← k_res1–13 CSV-Dateien (für File-Connector)
@@ -170,21 +170,11 @@ INFM_Airbyte/
 
 ## Verbindungsparameter
 
-### Für DB-Tools (DBeaver, TablePlus, etc.)
+Ports, Hosts und Zugangsdaten (DB-Tools **und** Airbyte-UI) stehen zentral in
+**[docs/zugang.md](docs/zugang.md#3-verbindungsparameter-zentrale-referenz)**.
 
-| Service | Host | Port | DB | User | Password |
-|---------|------|------|----|------|----------|
-| Source PostgreSQL | `localhost` | `5433` | `sourcedb` | `sourceuser` | `sourcepassword` |
-| Dest PostgreSQL | `localhost` | `5434` | `destdb` | `destuser` | `destpassword` |
-| Dest MySQL | `localhost` | `3306` | `destdb` | `destuser` | `destpassword` |
-
-### Für Airbyte (Container-zu-Container)
-
-| Service | Host | Port |
-|---------|------|------|
-| Source PostgreSQL | `hso_source_postgres` | `5432` |
-| Dest PostgreSQL | `hso_dest_postgres` | `5432` |
-| Dest MySQL | `hso_dest_mysql` | `3306` |
+Kurz: DB-Tools nutzen `localhost:5433/5434/3306`, in der **Airbyte-UI** dagegen
+`host.docker.internal:<Port>` (Airbyte läuft im kind-Cluster, nicht im Docker-Netz).
 
 ---
 

@@ -15,7 +15,7 @@ kompakte, reproduzierbare Ablauf.
 **Windows (PowerShell):**
 ```powershell
 .\scripts\install.ps1        # DB-Stack + Testdaten (einmalig)
-.\scripts\setup-airbyte.ps1  # Airbyte via abctl (einmalig, interaktiv)
+.\scripts\setup-airbyte.ps1  # Airbyte via abctl (einmalig, laeuft selbststaendig)
 ```
 **Linux / macOS:**
 ```bash

@@ -65,17 +65,27 @@ gibt daher keine getrennten Benutzerkonten pro Betreuer, sondern **einen Admin-L
 
 ---
 
-## 3. Datenbank-Zugang (für DB-Tools wie DBeaver/TablePlus)
+## 3. Verbindungsparameter (zentrale Referenz)
 
-| Dienst | Host | Port | DB | User | Passwort |
-|---|---|---:|---|---|---|
-| Source PostgreSQL | `localhost` | 5433 | `sourcedb` | `sourceuser` | `sourcepassword` |
-| Ziel PostgreSQL | `localhost` | 5434 | `destdb` | `destuser` | `destpassword` |
-| Ziel MySQL | `localhost` | 3306 | `destdb` | `destuser` | `destpassword` |
+> **Diese Tabelle ist die einzige Quelle für Ports und Zugangsdaten im Projekt.**
+> Andere Dokumente (README, installation-guide, architektur, airbyte-setup) verlinken hierher,
+> statt die Werte zu duplizieren.
 
-> Dies sind die **Standardwerte** aus `.env.example`. Falls in `.env` geändert,
-> gelten die dortigen Werte. In der Airbyte-UI ist als Host `host.docker.internal`
-> (statt `localhost`) einzutragen — siehe [architektur.md](architektur.md).
+Standardwerte aus `.env.example` — bei Änderung in `.env` gelten die dortigen Werte.
+
+| Dienst | DB-Tools (lokal) | In der Airbyte-UI eintragen | DB | User | Passwort |
+|---|---|---|---|---|---|
+| Source PostgreSQL | `localhost:5433` | `host.docker.internal:5433` | `sourcedb` | `sourceuser` | `sourcepassword` |
+| Ziel PostgreSQL | `localhost:5434` | `host.docker.internal:5434` | `destdb` | `destuser` | `destpassword` |
+| Ziel MySQL | `localhost:3306` | `host.docker.internal:3306` | `destdb` | `destuser` | `destpassword` |
+| Airbyte UI | `http://localhost:8000` | — | — | — | — |
+| PostgREST (Szenario 6) | `http://localhost:3000` | — | — | — | — |
+
+> **Warum in Airbyte `host.docker.internal` statt der Container-Namen?**
+> Airbyte läuft in einem kind-Cluster und **nicht** im Docker-Netz `airbyte_net`. Seine
+> Connector-Pods erreichen die DB-Container daher nur über den Host — also
+> `host.docker.internal` + den jeweiligen **Host-Port** (5433/5434/3306), nicht über
+> `hso_source_postgres:5432` o. ä.
 
 ---
 

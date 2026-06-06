@@ -18,6 +18,7 @@ Offizielle Doku: https://docs.airbyte.com/platform/using-airbyte/getting-started
 
 `abctl` ist Airbybes offizielles CLI-Tool. Es installiert und verwaltet Airbyte in einem
 lokalen Kubernetes-Cluster (Kind), der automatisch in Docker Desktop laeuft.
+Offizielle Referenz: <https://docs.airbyte.com/platform/deploying-airbyte/abctl>
 
 ### Automatisch (empfohlen)
 
@@ -53,21 +54,20 @@ bzw. `-darwin-arm64.tar.gz`), entpacken und `abctl` in den PATH legen.
 
 ## 2. Airbyte installieren
 
-```powershell
-abctl local install
-```
-
-Bei wenig RAM (unter 6 GB frei):
+Das Setup-Skript (Abschnitt 1) erledigt das inkl. File-Connector-Mount. Manuell:
 
 ```powershell
-abctl local install --low-resource-mode
+# CSV-Verzeichnis gleich als /local mitmounten (fuer den File-Connector, Abschnitt 7).
+# Windows-Pfad in MSYS-Form /c/... angeben (abctl trennt --volume stur an ':').
+abctl local install --volume "/c/<repo>/sql/source/data:/local"
 ```
 
-Das Kommando fragt nach:
-- **E-Mail-Adresse** (fuer den Admin-Account)
-- **Organisations-Name** (z. B. `HSO`)
+Bei wenig RAM (unter 6 GB frei) zusaetzlich `--low-resource-mode`.
 
-Die Installation dauert **5-10 Minuten** (Container-Downloads).
+Der Befehl laeuft **selbststaendig** (nicht interaktiv) und dauert **5-10 Minuten**
+(Container-Downloads). Ohne `--volume` funktioniert der File-Connector (`local`) nicht —
+und der Mount greift **nur bei der Cluster-Erstellung** (Details + Volume-Aktivierung:
+Abschnitt 7).
 
 ---
 
@@ -111,7 +111,7 @@ abctl local credentials --email login@example.com --password MeinNeuesPasswort12
 
 | Name in Airbyte | Typ | Verbindung |
 |-----------------|-----|-----------|
-| `HSO Source PostgreSQL` | PostgreSQL | `host.docker.internal:5433` |
+| `HSO Source PostgreSQL` | Postgres | `host.docker.internal:5433` |
 | `HSO CSV k_plz` | File (local) | `/local/k_plz.csv` |
 | `HSO CSV fm_gebaeude` | File (local) | `/local/fm_gebaeude.csv` |
 | `HSO CSV fm_inst` | File (local) | `/local/fm_inst.csv` |
@@ -156,7 +156,7 @@ Nach erfolgreichem Setup sind folgende Streams verfuegbar:
 | `fm_inst` | Institute / Org-Einheiten (~2.080 Zeilen) |
 | `fm_stamm` | Raumstammdaten (Tabelle vorhanden, aktuell ohne Daten) |
 | `k_plz` | PLZ-Verzeichnis (~34.000 Zeilen) |
-| `hso_students` | ⚠️ NICHT als PG-Stream verfuegbar (CSV defekt) – stattdessen File-Connector (Abschnitt 7) |
+| `hso_students` | ⚠️ Stream vorhanden, aber leer (0 Zeilen, CSV defekt) – Studierendendaten via File-Connector (Abschnitt 7) |
 | `fm_rna` | Raumnutzungsarten (~380 Zeilen) |
 | `hso_personal` | Personal anonymisiert (~870 Zeilen) |
 
@@ -175,7 +175,7 @@ Nach erfolgreichem Setup sind folgende Streams verfuegbar:
 
 | Name in Airbyte | Typ | Verbindung |
 |-----------------|-----|-----------|
-| `HSO Dest PostgreSQL` | PostgreSQL | `host.docker.internal:5434` |
+| `HSO Dest PostgreSQL` | Postgres | `host.docker.internal:5434` |
 | `HSO Dest MySQL` | MySQL | `host.docker.internal:3306` |
 
 ---
@@ -319,13 +319,21 @@ Alle CSV-Sources verwenden **Storage Provider: `local: Local Filesystem (limited
 > Nur ein *geaenderter Mount-Pfad* erfordert `abctl local uninstall` + Neuinstallation,
 > da `--volume` ausschliesslich bei der Cluster-Erstellung greift.
 
+> **Quellen (offizielle Airbyte-Doku):**
+> - File Source Connector — Provider *Local Filesystem* (nur Open Source); die URL muss
+>   mit `/local/` beginnen: <https://docs.airbyte.com/integrations/sources/file>
+> - `abctl local install --volume <HOST_PATH>:<GUEST_PATH>` (mehrfach setzbar):
+>   <https://docs.airbyte.com/platform/deploying-airbyte/abctl>
+> - Der zweite Schritt (`JOB_KUBE_LOCAL_VOLUME_ENABLED=true` + Neustart) ist in der
+>   offiziellen abctl-Doku **nicht** beschrieben und auf diesem Setup empirisch ermittelt.
+
 ---
 
 ## 8. Connection anlegen und Sync starten
 
 1. **Connections** -> **New Connection**
 2. Source und Destination auswaehlen
-3. **Streams** auswaehlen (z. B. `fm_gebaeude`, `hso_students`, `k_plz`)
+3. **Streams** auswaehlen (z. B. `fm_gebaeude`, `k_plz` — beide mit Daten gefuellt)
 4. **Sync Mode** pro Stream waehlen (siehe Tabelle unten)
 5. **Save and sync now**
 
@@ -372,10 +380,7 @@ abctl local uninstall --persisted
 
 ## Verbindungsuebersicht
 
-| Service | Fuer DB-Tools (lokal) | Fuer Airbyte (in der UI) |
-|---------|----------------------|--------------------------|
-| Source PostgreSQL | `localhost:5433` | `host.docker.internal:5433` |
-| Dest PostgreSQL | `localhost:5434` | `host.docker.internal:5434` |
-| Dest MySQL | `localhost:3306` | `host.docker.internal:3306` |
-| File Server (HTTP) | `http://localhost:8888` | `/local/<datei>.csv` (local Storage) |
-| Airbyte UI | http://localhost:8000 | - |
+Ports/Hosts/Zugangsdaten zentral in
+**[zugang.md](zugang.md#3-verbindungsparameter-zentrale-referenz)**.
+DB-Verbindungen in der Airbyte-UI immer mit `host.docker.internal:<Port>`; CSV-Flatfiles
+über den File-Connector mit Provider `local` und URL `/local/<datei>.csv` (Abschnitt 7).

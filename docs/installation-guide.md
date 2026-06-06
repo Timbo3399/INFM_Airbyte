@@ -127,8 +127,10 @@ bash scripts/setup-airbyte.sh
 Das Skript:
 - installiert `abctl` (Windows: nach `C:\tools\airbyte\` + PATH; Linux/macOS: via offiziellem Installer `curl … get.airbyte.com`)
 - fragt nach Low-Resource-Mode (empfohlen bei weniger als 6 GB freiem RAM)
-- startet `abctl local install` (interaktiv: E-Mail + Organisations-Name eingeben)
-- zeigt die Login-Credentials an
+- startet `abctl local install` (läuft selbstständig, **nicht interaktiv**) und mountet dabei
+  `sql/source/data` als `/local` in den Cluster + aktiviert das File-Connector-Volume
+  (Details: [airbyte-setup.md](airbyte-setup.md) Abschnitt 7)
+- danach Login-Passwort setzen (Schritt unten)
 
 Die Installation dauert **5–10 Minuten** (Container-Downloads).
 
@@ -160,49 +162,13 @@ Weitere Details: [docs/airbyte-setup.md](airbyte-setup.md)
 
 ## 6. Erster Airbyte-Test
 
-### Source anlegen (PostgreSQL mit Testdaten)
+Der vollständige Walkthrough für den ersten ETL-Lauf (Postgres-Source → Postgres-Ziel,
+Stream-Auswahl, Sync, mit Screenshot-Punkten) steht im Runbook:
 
-1. Airbyte UI → **Sources** → `+ New Source`
-2. Typ: **Postgres**
-3. Felder ausfuellen:
+→ **[etl-prozess.md](etl-prozess.md)**
 
-| Feld | Wert |
-|------|------|
-| Source name | `HSO Source PostgreSQL` |
-| Host | `host.docker.internal` |
-| Port | `5433` |
-| Database | `sourcedb` |
-| Username | `sourceuser` |
-| Password | `sourcepassword` |
-| SSL mode | `disable` |
-
-4. **Test connection** → sollte gruen werden
-5. **Set up source**
-
-> **Warum `host.docker.internal`?** Airbybes Connector-Container laufen in Kind (Kubernetes in Docker) und erreichen den Host-Rechner ueber diesen DNS-Namen.
-
-### Destination anlegen (PostgreSQL Ziel)
-
-1. **Destinations** → `+ New Destination`
-2. Typ: **Postgres**
-
-| Feld | Wert |
-|------|------|
-| Destination name | `HSO Dest PostgreSQL` |
-| Host | `host.docker.internal` |
-| Port | `5434` |
-| Database | `destdb` |
-| Username | `destuser` |
-| Password | `destpassword` |
-
-### Connection anlegen & syncen
-
-1. **Connections** → `+ New Connection`
-2. Source: `HSO Source PostgreSQL`
-3. Destination: `HSO Dest PostgreSQL`
-4. Streams auswaehlen: `fm_gebaeude`, `hso_students`, `k_plz`
-5. Sync mode: **Full Refresh | Overwrite**
-6. **Save and sync now** → Ergebnis im Dashboard beobachten
+Die ausführliche Feld-Referenz für **alle** Sources/Destinations (Postgres, MySQL, File)
+findest du in [airbyte-setup.md](airbyte-setup.md).
 
 ---
 
@@ -305,20 +271,8 @@ pip install requests psycopg2-binary      # Linux/macOS ggf. pip3 + virtuelle Um
 
 ---
 
-## Verbindungsübersicht (Spickzettel)
+## Verbindungsübersicht
 
-| Service | Für DB-Tools (lokal) | Für Airbyte (in der UI eintragen) |
-|---------|----------------------|-----------------------------------|
-| Source PostgreSQL | `localhost:5433` | `host.docker.internal:5433` |
-| Dest PostgreSQL | `localhost:5434` | `host.docker.internal:5434` |
-| Dest MySQL | `localhost:3306` | `host.docker.internal:3306` |
-| Airbyte UI | http://localhost:8000 | – |
-| PostgREST (Szenario 6) | http://localhost:3000 | – |
-
-**Datenbank-Credentials** (Standard, änderbar in `.env`):
-
-| DB | User | Passwort | Datenbank |
-|----|------|----------|-----------|
-| Source PG | `sourceuser` | `sourcepassword` | `sourcedb` |
-| Dest PG | `destuser` | `destpassword` | `destdb` |
-| Dest MySQL | `destuser` | `destpassword` | `destdb` |
+Alle Ports, Hosts und Zugangsdaten stehen zentral in
+**[zugang.md](zugang.md#3-verbindungsparameter-zentrale-referenz)** (DB-Tools nutzen
+`localhost`, die Airbyte-UI `host.docker.internal`).
