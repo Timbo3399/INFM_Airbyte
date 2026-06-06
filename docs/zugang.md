@@ -17,8 +17,14 @@ zugegriffen wird — inkl. des Zugangs für die Betreuer (Herr Stippekohl + Doze
 ### Eigenes / gemeinsames Passwort setzen
 
 ```powershell
-abctl local credentials --password <gewuenschtes-passwort>
+abctl local credentials --email <login-email> --password <gewuenschtes-passwort>
 ```
+
+> **Die E-Mail ist der Login-Name in der UI.** `--email` immer mitangeben: Ist in der
+> Installation noch keine E-Mail gesetzt (`abctl local credentials` zeigt dann
+> `Email: [not set]`), schlägt der reine `--password`-Aufruf mit
+> `unable to determine organization email` fehl. Die E-Mail ist frei wählbar
+> (z. B. `admin@example.com`).
 
 > Für den Betreuer-Termin empfiehlt sich ein **bewusst gesetztes, gemeinsames Passwort**
 > (statt des generierten), damit alle denselben Login verwenden können.

@@ -165,13 +165,26 @@ Write-Host ""
 
 $setPassword = Read-Host "  Eigenes Passwort setzen? (j/N)"
 if ($setPassword -in @("j","J","y","Y")) {
-    $newPass = Read-Host "  Neues Passwort"
+    # Passwort verdeckt einlesen (kein Klartext in der Konsole)
+    $securePass = Read-Host "  Neues Passwort" -AsSecureString
+    $newPass    = [System.Net.NetworkCredential]::new("", $securePass).Password
     if (-not [string]::IsNullOrWhiteSpace($newPass)) {
-        & $ABCTL_EXE local credentials --password $newPass
+        # abctl benoetigt eine gesetzte Organisations-E-Mail. Ist keine vorhanden
+        # ("Email: [not set]"), schlaegt der interne Lookup mit "unable to
+        # determine organization email" / "invalid character '<'" fehl (die API
+        # liefert dann HTML statt JSON). Darum E-Mail explizit per --email setzen.
+        $emailMatch = [regex]::Match("$currentCreds", '(?im)^\s*Email:\s*([^\s\[]+@\S+)')
+        if ($emailMatch.Success) {
+            $email = $emailMatch.Groups[1].Value
+        } else {
+            $email = Read-Host "  E-Mail fuer den Login (noch keine gesetzt) [admin@example.com]"
+            if ([string]::IsNullOrWhiteSpace($email)) { $email = "admin@example.com" }
+        }
+        & $ABCTL_EXE local credentials --email $email --password $newPass
         if ($LASTEXITCODE -eq 0) {
             Write-Ok "Passwort gesetzt."
         } else {
-            Write-Warn "Passwort konnte nicht gesetzt werden. Manuell: abctl local credentials --password <passwort>"
+            Write-Warn "Passwort konnte nicht gesetzt werden. Manuell: abctl local credentials --email <email> --password <passwort>"
         }
     } else {
         Write-Warn "Leeres Passwort - keine Aenderung vorgenommen."

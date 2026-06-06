@@ -96,8 +96,12 @@ Client-Secret: ...
 ### Passwort aendern
 
 ```powershell
-abctl local credentials --password MeinNeuesPasswort123
+abctl local credentials --email login@example.com --password MeinNeuesPasswort123
 ```
+
+> Die E-Mail ist der Login-Name in der UI und muss mitangegeben werden. Fehlt sie
+> (Ausgabe `Email: [not set]`), bricht der reine `--password`-Aufruf mit
+> `unable to determine organization email` ab.
 
 ---
 

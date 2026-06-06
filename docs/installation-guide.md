@@ -148,6 +148,12 @@ abctl local credentials
 
 > Ausgabe zeigt E-Mail, generiertes Passwort, Client-ID und Client-Secret.
 
+**Eigenes Passwort setzen** (E-Mail = Login-Name, muss mitangegeben werden):
+
+```powershell
+abctl local credentials --email login@example.com --password <gewuenschtes-passwort>
+```
+
 Weitere Details: [docs/airbyte-setup.md](airbyte-setup.md)
 
 ---

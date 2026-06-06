@@ -50,7 +50,7 @@ ok "Airbyte installiert."
 cyan "Login-Credentials"
 abctl local credentials || true
 echo
-echo  "  Eigenes/gemeinsames Passwort setzen: abctl local credentials --password <pw>"
+echo  "  Eigenes/gemeinsames Passwort setzen: abctl local credentials --email <email> --password <pw>"
 
 cat <<'EOF'
 
