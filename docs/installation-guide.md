@@ -76,7 +76,7 @@ bash scripts/install.sh
 Das Skript:
 - prueft alle Voraussetzungen (Docker, Git, Python)
 - erstellt `.env` aus `.env.example`
-- erstellt Docker-Volume `oss_local_root` (fuer CSV-Dateien)
+- erstellt Docker-Volume `oss_local_root` (nur fuer den HTTP-File-Server; der abctl-File-Connector nutzt stattdessen den `/local`-Mount, s. airbyte-setup.md Abschnitt 7)
 - laedt Docker-Images herunter
 - startet alle vier Container (source-postgres, dest-postgres, dest-mysql, file-server)
 - wartet bis alle Container healthy sind
@@ -163,7 +163,7 @@ Weitere Details: [docs/airbyte-setup.md](airbyte-setup.md)
 ### Source anlegen (PostgreSQL mit Testdaten)
 
 1. Airbyte UI → **Sources** → `+ New Source`
-2. Typ: **PostgreSQL**
+2. Typ: **Postgres**
 3. Felder ausfuellen:
 
 | Feld | Wert |
@@ -184,7 +184,7 @@ Weitere Details: [docs/airbyte-setup.md](airbyte-setup.md)
 ### Destination anlegen (PostgreSQL Ziel)
 
 1. **Destinations** → `+ New Destination`
-2. Typ: **PostgreSQL**
+2. Typ: **Postgres**
 
 | Feld | Wert |
 |------|------|
@@ -229,9 +229,10 @@ abctl local status
 # Logs anzeigen
 abctl local logs
 
-# Neustart (bei haengenden Kind-Containern)
-abctl local uninstall
-abctl local install
+# Neustart (bei haengenden Kind-Containern) - besser ueber das Setup-Skript,
+# damit der File-Connector-Mount (/local) wieder gesetzt wird:
+.\scripts\setup-airbyte.ps1
+# (manuelles 'abctl local install' OHNE --volume verliert den /local-Mount!)
 ```
 
 ### Airbyte-Connector kann DBs nicht erreichen

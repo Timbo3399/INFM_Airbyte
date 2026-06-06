@@ -29,7 +29,7 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 
 ## Schritt 1 — Source anlegen (PostgreSQL)
 
-**Sources → + New Source → PostgreSQL**
+**Sources → + New Source → Postgres**
 
 | Feld | Wert |
 |---|---|
@@ -45,7 +45,7 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 
 ## Schritt 2 — Destination anlegen (PostgreSQL)
 
-**Destinations → + New Destination → PostgreSQL**
+**Destinations → + New Destination → Postgres**
 
 | Feld | Wert |
 |---|---|

@@ -4,7 +4,8 @@
 # Was dieses Skript tut:
 #   1. abctl (Airbyte CLI) herunterladen und in C:\tools\airbyte\ ablegen
 #   2. abctl zur PATH-Variable hinzufuegen (Session + dauerhaft)
-#   3. Airbyte lokal installieren (abctl local install)
+#   3. Airbyte lokal installieren (abctl local install) inkl. /local-Mount der CSVs
+#      und Aktivierung des File-Connector-Volumes (JOB_KUBE_LOCAL_VOLUME_ENABLED)
 #   4. Login-Credentials setzen
 #   5. Verbindungsinfos ausgeben
 #
@@ -20,12 +21,30 @@ $AIRBYTE_DIR  = "C:\tools\airbyte"
 $ABCTL_EXE    = "$AIRBYTE_DIR\abctl.exe"
 $RELEASES_URL = "https://api.github.com/repos/airbytehq/abctl/releases/latest"
 
+# Repo-Wurzel relativ zum Skript (scripts/ -> ..). Enthaelt sql/source/data mit den CSVs,
+# die als /local in den abctl/kind-Cluster gemountet werden (File-Connector, Schritt 5).
+$REPO_ROOT    = Split-Path -Parent $PSScriptRoot
+$DATA_DIR     = Join-Path $REPO_ROOT "sql\source\data"
+$KIND_NODE    = "airbyte-abctl-control-plane"   # kind-Node-Container von abctl
+$ABCTL_NS     = "airbyte-abctl"                  # Kubernetes-Namespace von Airbyte
+$KUBE_CFG     = "/etc/kubernetes/admin.conf"     # kubeconfig im kind-Node
+
 # --- Hilfsfunktionen ---------------------------------------------------------
 
 function Write-Step([string]$msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-Ok([string]$msg)   { Write-Host "    [OK] $msg" -ForegroundColor Green }
 function Write-Warn([string]$msg) { Write-Host "    [!]  $msg" -ForegroundColor Yellow }
 function Write-Fail([string]$msg) { Write-Host "    [X]  $msg" -ForegroundColor Red }
+
+# Wandelt einen Windows-Pfad (C:\a\b) in die von abctl/kind erwartete MSYS-Form (/c/a/b) um.
+# Noetig, weil abctl den --volume-String stur an ':' trennt und der Laufwerks-Doppelpunkt
+# sonst zu "is not a valid volume spec" fuehrt. Docker Desktop loest /c/... wieder auf C: auf.
+function ConvertTo-AbctlVolumePath([string]$winPath) {
+    $full  = (Resolve-Path $winPath).Path
+    $drive = $full.Substring(0,1).ToLower()
+    $rest  = ($full.Substring(2)) -replace '\\','/'
+    return "/$drive$rest"
+}
 
 # --- Banner ------------------------------------------------------------------
 
@@ -131,9 +150,9 @@ $env:Path = "$env:Path;$AIRBYTE_DIR"
 
 Write-Step "Airbyte lokal installieren"
 Write-Host ""
-Write-Host "  HINWEIS: Der naechste Schritt ist interaktiv." -ForegroundColor Yellow
-Write-Host "  Du wirst nach E-Mail-Adresse und Organisations-Name gefragt." -ForegroundColor Yellow
-Write-Host "  Die Installation dauert bis zu 10 Minuten (Downloads im Hintergrund)." -ForegroundColor Yellow
+Write-Host "  HINWEIS: Die Installation laeuft selbststaendig (nicht interaktiv)." -ForegroundColor Yellow
+Write-Host "  Sie dauert bis zu 10 Minuten (Image-Downloads im Hintergrund)." -ForegroundColor Yellow
+Write-Host "  Login-Daten werden danach in Schritt 6 gesetzt." -ForegroundColor Yellow
 Write-Host ""
 
 $lowRes = Read-Host "  Wenig RAM (unter 6 GB frei)? Low-Resource-Mode aktivieren? (j/N)"
@@ -141,6 +160,18 @@ $installArgs = @("local", "install")
 if ($lowRes -in @("j","J","y","Y")) {
     $installArgs += "--low-resource-mode"
     Write-Warn "Low-Resource-Mode aktiv (2 CPUs / 8 GB RAM Minimum)."
+}
+
+# CSV-Verzeichnis als /local in den kind-Node mounten, damit der Airbyte File-Connector
+# (Storage Provider "local", URL /local/<datei>.csv) die Flatfiles lesen kann.
+# WICHTIG: Wird nur bei der ERSTEN Cluster-Erstellung angewandt. Existiert der Cluster
+# bereits, ignoriert abctl --volume - dann vorher 'abctl local uninstall' ausfuehren.
+if (Test-Path $DATA_DIR) {
+    $dataVol = ConvertTo-AbctlVolumePath $DATA_DIR
+    $installArgs += @("--volume", "${dataVol}:/local")
+    Write-Ok "CSV-Verzeichnis wird als /local gemountet: $DATA_DIR"
+} else {
+    Write-Warn "Datenverzeichnis nicht gefunden ($DATA_DIR) - File-Connector-Mount uebersprungen."
 }
 
 Write-Host ""
@@ -152,6 +183,27 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 Write-Ok "Airbyte erfolgreich installiert."
+
+# --- 5b. File-Connector: lokalen /local-Mount aktivieren ---------------------
+# Der --volume-Mount bringt die CSVs in den kind-Node. Damit die dynamisch
+# gestarteten Connector-Pods sie auch sehen, muss JOB_KUBE_LOCAL_VOLUME_ENABLED=true
+# sein. abctl setzt das nicht automatisch -> hier per kubectl im kind-Node patchen
+# und launcher/worker neu starten (sonst greift die Aenderung nicht).
+
+if (Test-Path $DATA_DIR) {
+    Write-Step "File-Connector: lokalen /local-Mount aktivieren"
+    $patch = '{"data":{"JOB_KUBE_LOCAL_VOLUME_ENABLED":"true"}}'
+    docker exec $KIND_NODE kubectl --kubeconfig $KUBE_CFG patch configmap airbyte-abctl-airbyte-env -n $ABCTL_NS --type merge -p $patch 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        docker exec $KIND_NODE kubectl --kubeconfig $KUBE_CFG rollout restart deploy/airbyte-abctl-workload-launcher deploy/airbyte-abctl-worker -n $ABCTL_NS 2>&1 | Out-Null
+        docker exec $KIND_NODE kubectl --kubeconfig $KUBE_CFG rollout status deploy/airbyte-abctl-workload-launcher -n $ABCTL_NS --timeout=120s 2>&1 | Out-Null
+        Write-Ok "Lokaler File-Connector-Mount aktiv (Provider 'local', URL /local/<datei>.csv)."
+    } else {
+        Write-Warn "JOB_KUBE_LOCAL_VOLUME_ENABLED konnte nicht gesetzt werden."
+        Write-Host "         Manuell im kind-Node nachholen:" -ForegroundColor Gray
+        Write-Host "         docker exec $KIND_NODE kubectl --kubeconfig $KUBE_CFG patch configmap airbyte-abctl-airbyte-env -n $ABCTL_NS --type merge -p '$patch'" -ForegroundColor Gray
+    }
+}
 
 # --- 6. Credentials setzen ---------------------------------------------------
 

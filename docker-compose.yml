@@ -75,12 +75,16 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- FILE SERVER: CSV-Flatfiles fuer Airbyte File Connector -----------------
-  # Doppelter Zweck:
-  #   1. HTTP-Browsing der Dateien: http://localhost:8888/
-  #   2. Kopiert CSVs beim Start in oss_local_root (/local/) damit
-  #      der Airbyte File-Connector sie ueber Storage Provider "local" lesen kann.
-  #      Hinweis: oss_local_root muss existieren (d.h. Airbyte via abctl installiert).
+  # --- FILE SERVER: CSV-Flatfiles per HTTP browsebar -------------------------
+  #   Zweck: HTTP-Browsing/-Download der Dateien unter http://localhost:8888/
+  #   (z. B. zum Pruefen der Rohdaten).
+  #
+  #   WICHTIG: Der Airbyte File-Connector liest NICHT ueber diesen Server und NICHT
+  #   aus oss_local_root. Unter abctl (Kubernetes/kind) sehen die Connector-Pods das
+  #   Volume nicht; stattdessen mountet setup-airbyte.ps1 das Verzeichnis
+  #   sql/source/data via `abctl local install --volume ...:/local` direkt als /local
+  #   (Details: docs/airbyte-setup.md Abschnitt 7). Der Copy-Schritt unten ist Legacy
+  #   und fuer den File-Connector nicht mehr noetig.
   file-server:
     image: nginx:alpine
     container_name: hso_fileserver

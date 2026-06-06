@@ -121,7 +121,7 @@ abctl local credentials --email login@example.com --password MeinNeuesPasswort12
 
 ### Source: PostgreSQL (Testdaten)
 
-In der Airbyte UI: **Sources** -> **New Source** -> **PostgreSQL**
+In der Airbyte UI: **Sources** -> **New Source** -> **Postgres**
 
 | Feld | Wert |
 |------|------|
@@ -182,7 +182,7 @@ Nach erfolgreichem Setup sind folgende Streams verfuegbar:
 
 ### Destination: PostgreSQL
 
-**Destinations** -> **New Destination** -> **PostgreSQL**
+**Destinations** -> **New Destination** -> **Postgres**
 
 | Feld | Wert |
 |------|------|
@@ -228,8 +228,9 @@ Nach erfolgreichem Setup sind folgende Streams verfuegbar:
 
 ## 7. Source: CSV-Flatfiles (File Connector)
 
-Der Airbyte File Connector liest CSV-Dateien aus dem Docker-Volume `oss_local_root`.
-Die Dateien werden automatisch beim Stackstart durch den `hso_fileserver`-Container dorthin kopiert.
+Der Airbyte File Connector liest die CSV-Dateien aus dem Verzeichnis `sql/source/data`,
+das `setup-airbyte.ps1` beim Install als `/local` in den abctl/kind-Cluster einhaengt
+(Mechanismus siehe Hinweis am Ende dieses Abschnitts).
 
 **Sources** -> **New Source** -> **File (CSV, JSON, Excel, Feather, Parquet)**
 
@@ -289,16 +290,34 @@ Alle CSV-Sources verwenden **Storage Provider: `local: Local Filesystem (limited
 | `HSO CSV hso_students` | `/local/hso_students.csv` | `\|` (Pipe) |
 
 > **Warum `local` und nicht `HTTPS: Public Web`?**
-> Der `source-file`-Connector (v0.6.0) erzwingt bei `HTTPS: Public Web` immer eine
-> TLS-Verbindung - auch wenn die URL mit `http://` beginnt. Der Connector mountet
-> das Volume `oss_local_root` automatisch als `/local/` ein, daher ist `local` die
-> zuverlaessige Loesung fuer lokale Dateien.
+> Der `source-file`-Connector erzwingt bei `HTTPS: Public Web` immer eine TLS-Verbindung -
+> auch wenn die URL mit `http://` beginnt. Ein lokaler HTTP-Server (z. B. `hso_fileserver`)
+> wird damit nicht erreicht (`SSLError: WRONG_VERSION_NUMBER`). Daher ist `local` der
+> zuverlaessige Weg fuer lokale Dateien.
 
-> **Dateien manuell aktualisieren** (falls neue CSVs hinzugefuegt wurden):
-> ```bash
-> # <REPO> = absoluter Pfad zum Repository (Windows-Pfade mit / schreiben)
-> docker run --rm -v oss_local_root:/local -v "<REPO>/sql/source/data":/source:ro alpine sh -c "cp /source/*.csv /local/"
-> ```
+> **Wie kommt `/local` in den Cluster? (abctl-spezifisch)**
+> Mit abctl laeuft Airbyte in Kubernetes/kind - das Docker-Volume `oss_local_root` reicht
+> hier NICHT, die Connector-Pods sehen es nicht. `setup-airbyte.ps1` loest das in zwei
+> Schritten (bei manueller Installation selbst ausfuehren):
+> 1. **Mount beim Install:** `sql/source/data` wird als `/local` in den kind-Node gehaengt:
+>    `abctl local install --volume "/c/<repo>/sql/source/data:/local"`
+>    Windows-Pfade in MSYS-Form `/c/...` angeben - abctl trennt den `--volume`-String stur
+>    an `:`, sodass `C:\...` zu `is not a valid volume spec` fuehrt.
+> 2. **Volume fuer Connector-Pods aktivieren:** danach
+>    `JOB_KUBE_LOCAL_VOLUME_ENABLED=true` setzen und launcher/worker neu starten (sonst
+>    haengt der launcher `/local` nicht in die Job-Pods ein):
+>    ```bash
+>    docker exec airbyte-abctl-control-plane kubectl --kubeconfig /etc/kubernetes/admin.conf \
+>      patch configmap airbyte-abctl-airbyte-env -n airbyte-abctl --type merge \
+>      -p '{"data":{"JOB_KUBE_LOCAL_VOLUME_ENABLED":"true"}}'
+>    docker exec airbyte-abctl-control-plane kubectl --kubeconfig /etc/kubernetes/admin.conf \
+>      rollout restart deploy/airbyte-abctl-workload-launcher deploy/airbyte-abctl-worker -n airbyte-abctl
+>    ```
+
+> **Dateien aktualisieren:** `/local` ist ein Live-Bind-Mount von `sql/source/data` -
+> geaenderte oder neue CSVs dort sind im Connector sofort sichtbar (kein Kopieren noetig).
+> Nur ein *geaenderter Mount-Pfad* erfordert `abctl local uninstall` + Neuinstallation,
+> da `--volume` ausschliesslich bei der Cluster-Erstellung greift.
 
 ---
 
@@ -340,6 +359,14 @@ abctl local uninstall --persisted
 #   Windows:      Remove-Item -Recurse "$env:USERPROFILE\.airbyte\abctl"
 #   Linux/macOS:  rm -rf ~/.airbyte/abctl
 ```
+
+> **Bequemer:** Das Skript `scripts/uninstall.ps1` (bzw. `uninstall.sh`) entfernt Airbyte,
+> den Docker-Stack und die Volumes in einem Schritt:
+> ```powershell
+> .\scripts\uninstall.ps1               # vollstaendig (mit Rueckfrage)
+> .\scripts\uninstall.ps1 -KeepData     # DB-Daten behalten
+> .\scripts\uninstall.ps1 -RemoveAbctl  # zusaetzlich abctl-Binary + PATH entfernen
+> ```
 
 ---
 

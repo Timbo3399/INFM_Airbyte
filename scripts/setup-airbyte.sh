@@ -37,15 +37,44 @@ else
   fi
 fi
 
-cyan "Airbyte lokal installieren (interaktiv, 5-10 Min.)"
-echo  "  Du wirst nach E-Mail-Adresse und Organisations-Name gefragt."
+# Repo-Wurzel + CSV-Verzeichnis (wird als /local fuer den File-Connector gemountet)
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DATA_DIR="$REPO_ROOT/sql/source/data"
+KIND_NODE="airbyte-abctl-control-plane"   # kind-Node-Container von abctl
+ABCTL_NS="airbyte-abctl"                   # Kubernetes-Namespace von Airbyte
+KUBE_CFG="/etc/kubernetes/admin.conf"      # kubeconfig im kind-Node
+
+cyan "Airbyte lokal installieren (nicht interaktiv, 5-10 Min.)"
+install_args=(local install)
 printf "  Wenig RAM (unter 6 GB frei)? Low-Resource-Mode? (j/N) "
 read -r lowres || lowres=""
 case "$lowres" in
-  j|J|y|Y) warn "Low-Resource-Mode aktiv."; abctl local install --low-resource-mode ;;
-  *)       abctl local install ;;
+  j|J|y|Y) warn "Low-Resource-Mode aktiv."; install_args+=(--low-resource-mode) ;;
 esac
+# CSV-Verzeichnis als /local in den kind-Node mounten (File-Connector, Provider "local").
+# WICHTIG: Wird nur bei der ERSTEN Cluster-Erstellung angewandt; existiert der Cluster
+# schon, ignoriert abctl --volume - dann vorher 'abctl local uninstall' ausfuehren.
+if [ -d "$DATA_DIR" ]; then
+  install_args+=(--volume "$DATA_DIR:/local")
+  ok "CSV-Verzeichnis wird als /local gemountet: $DATA_DIR"
+else
+  warn "Datenverzeichnis nicht gefunden ($DATA_DIR) - File-Connector-Mount uebersprungen."
+fi
+abctl "${install_args[@]}"
 ok "Airbyte installiert."
+
+# File-Connector-Volume aktivieren: damit die Connector-Pods /local sehen, muss
+# JOB_KUBE_LOCAL_VOLUME_ENABLED=true sein. abctl setzt das nicht automatisch.
+if [ -d "$DATA_DIR" ]; then
+  cyan "File-Connector: lokalen /local-Mount aktivieren"
+  if docker exec "$KIND_NODE" kubectl --kubeconfig "$KUBE_CFG" patch configmap airbyte-abctl-airbyte-env -n "$ABCTL_NS" --type merge -p '{"data":{"JOB_KUBE_LOCAL_VOLUME_ENABLED":"true"}}' >/dev/null 2>&1; then
+    docker exec "$KIND_NODE" kubectl --kubeconfig "$KUBE_CFG" rollout restart deploy/airbyte-abctl-workload-launcher deploy/airbyte-abctl-worker -n "$ABCTL_NS" >/dev/null 2>&1 || true
+    docker exec "$KIND_NODE" kubectl --kubeconfig "$KUBE_CFG" rollout status  deploy/airbyte-abctl-workload-launcher -n "$ABCTL_NS" --timeout=120s >/dev/null 2>&1 || true
+    ok "Lokaler File-Connector-Mount aktiv (Provider 'local', URL /local/<datei>.csv)."
+  else
+    warn "JOB_KUBE_LOCAL_VOLUME_ENABLED konnte nicht gesetzt werden (File-Connector 'local' ggf. nicht verfuegbar)."
+  fi
+fi
 
 cyan "Login-Credentials"
 abctl local credentials || true
