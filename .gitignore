@@ -8,6 +8,11 @@ airbyte/
 # Lokal heruntergeladene Airbyte CLI (Binary/ZIP, nicht committen)
 abctl/
 
+# Lokale Berechtigung für Claude-Integration
+claude_api_key.txt
+settings.local.json
+.claude
+
 # Große Datendateien
 data.zip
 *.dump
