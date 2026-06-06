@@ -4,13 +4,11 @@
 
 | | |
 |---|---|
-| Modul | Informatik Master, SoSe 2026 |
-| Gruppe | ‹Gruppenname / Mitglieder eintragen› |
-| Bearbeiter | ‹Namen + Matrikelnummern› |
-| Stand | 31.05.2026 |
+| Modul | INF-M Modul Projekte SoSe '26 |
+| Gruppe | Airbyte |
+| Bearbeiter | Bräutigam Rebecca <rbraeuti@stud.hs-offenburg.de> Horst Isabella <ihorst@stud.hs-offenburg.de> Lahres Timo <tlahres@stud.hs-offenburg.de>|
+| Stand | 06.06.2026 |
 | Abgabe | 07.06.2026 (Zwischenbericht + Doku) |
-
-> *Hinweis: Mit ‹…› markierte Stellen sind vor der Abgabe von der Gruppe zu ergänzen.*
 
 ---
 
