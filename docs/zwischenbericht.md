@@ -6,9 +6,10 @@
 |---|---|
 | Modul | INF-M Modul Projekte SoSe '26 |
 | Gruppe | Airbyte |
-| Bearbeiter | Bräutigam Rebecca <rbraeuti@stud.hs-offenburg.de> Horst Isabella <ihorst@stud.hs-offenburg.de> Lahres Timo <tlahres@stud.hs-offenburg.de>|
-| Stand | 06.06.2026 |
+| Bearbeiter | Lahres Timo <tlahres@stud.hs-offenburg.de> <br>Bräutigam Rebecca <rbraeuti@stud.hs-offenburg.de> <br> Horst Isabella <ihorst@stud.hs-offenburg.de> |
+| Stand | 07.06.2026 |
 | Abgabe | 07.06.2026 (Zwischenbericht + Doku) |
+| GitHub | <https://github.com/Timbo3399/INFM_Airbyte> |
 
 ---
 
@@ -112,8 +113,6 @@ Die bereitgestellten CSV-Dateien ließen sich **nicht** per direktem PostgreSQL-
 
 ## 5. Probleme & Lösungen
 
-> *Dieses Kapitel ist gemäß Betreuer-Mail explizit gefordert.*
-
 ### 5.1 Windows-/Umgebungsspezifische Hürden
 
 | Problem | Ursache | Lösung |
@@ -124,7 +123,7 @@ Die bereitgestellten CSV-Dateien ließen sich **nicht** per direktem PostgreSQL-
 
 ### 5.2 Datenqualität der Quell-CSVs (Hauptproblem)
 
-Der SQL-Init lud die drei Kern-Tabellen **gar nicht** — `COPY` brach unter `ON_ERROR_STOP` bereits an der ersten fehlerhaften Datei ab, wodurch alle folgenden leer blieben. Die konkreten Defekte:
+Der SQL-Init lud die drei Kern-Tabellen **gar nicht** — `COPY` brach unter `ON_ERROR_STOP` bereits an der ersten fehlerhaften Datei ab, wodurch alle folgenden leer blieben. Die konkreten Probleme:
 
 - **`fm_gebaeude.csv`**: unquotierte Kommas in Textfeldern (z. B. „Hörsäle,Bib.,RZ"), eingebettete Header-Zeilen.
 - **`k_plz.csv`**: **3.417 Header-Zeilen** mitten in den Daten (zusammengesetzte Einzel-Exporte), Zeilen mit zu wenig Feldern, ein Feld (`krskfz`) breiter als das Schema (Kreis-Namen).
@@ -154,11 +153,9 @@ Alle Lösungen sind in `scripts/setup-airbyte.ps1`/`.sh` automatisiert und in
 
 ## 6. Offene Punkte / Fragen an die Betreuer
 
-> *Ebenfalls gemäß Betreuer-Mail gefordert.*
-
-1. **`hso_students.csv` — Soll-Struktur?** Die Datei ist nicht eindeutig ladbar (mehr Datenspalten als Header, defektes Quoting). Können Sie eine korrigierte Datei bereitstellen oder die beabsichtigte Spaltenstruktur/das Export-Format nennen? Dies blockiert aktuell Szenario 4 (Account-Mapping in die Source-DB).
+1. **`hso_students.csv` Soll-Struktur?** Die Datei ist nicht eindeutig ladbar (mehr Datenspalten als Header, defektes Quoting). Ist es gewollt eine defekte Datei einzulesen, oder wird eine korrekt lesbare Datei bereitgestellt? Dies blockiert aktuell Szenario 4 (Account-Mapping in die Source-DB).
 2. **`fm_stamm`** (Raumstammdaten): Es liegt keine Quelldatei vor. Wird diese Tabelle benötigt, und woher sollen die Daten kommen?
-3. **Zugang für Betreuer:** Airbyte Community Edition ist im Wesentlichen Single-User und läuft auf `localhost`. Wie soll Ihr Zugang erfolgen — gemeinsamer Admin-Login während des Vor-Ort-Termins, oder ist ein Remote-Zugang (z. B. Tunnel/VM) gewünscht? (Vorschlag in [zugang.md](zugang.md).)
+3. **Zugang für Betreuer:** Airbyte Community Edition ist im Wesentlichen Single-User und läuft auf `localhost`. Wie soll Ihr Zugang erfolgen? Gemeinsamer Admin-Login während des Vor-Ort-Termins, oder ist ein Remote-Zugang (z. B. Tunnel/VM) gewünscht? (Vorschlag in [zugang.md](zugang.md).)
 4. **Sync-Strategie:** Wir nutzen den Cursor-Modus (`updatedat`) statt CDC, da CDC zusätzliche PostgreSQL-Konfiguration (logical WAL, Replication Slot) erfordert. Ist CDC für die Evaluation gewünscht?
 5. **Scope:** Welche der sechs Szenarien haben für die Bewertung Priorität?
 
@@ -175,6 +172,8 @@ mit Bewertung der Airbyte-Eignung und unserem Umsetzungsstand steht in
 - **Einschränkungen ggü. Talend:** **kein** OSS-Connector für **Informix**; **kein XML** nativ;
   **keine freie Code-Snippet-Ausführung** (Mapping nur via dbt-SQL/Custom-Connector). Diese
   Punkte sind die zentralen Evaluationsbefunde.
+
+---
 
 ## 8. Nächste Schritte
 
