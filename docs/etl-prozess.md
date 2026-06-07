@@ -2,8 +2,8 @@
 
 Ziel: der **einfachste vollständige ETL-Lauf** als Meilenstein-Nachweis — eine
 Tabelle aus der Source-PostgreSQL über Airbyte in die Ziel-PostgreSQL kopieren
-(Full Refresh | Overwrite). Mit 📸-Markierungen für die Screenshots, die in den
-Zwischenbericht gehören.
+(Full Refresh | Overwrite). Die eingebetteten **Screenshots** (Ordner `pictures/`)
+zeigen die realen Schritte aus dem durchgeführten Lauf.
 
 Detaillierte Feld-Tabellen siehe [airbyte-setup.md](airbyte-setup.md); hier der
 kompakte, reproduzierbare Ablauf.
@@ -50,8 +50,14 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 > automatisch mit deinen **Airbyte-Login-Daten** vor. Vor dem Speichern prüfen, dass dort
 > wirklich `sourceuser` / `sourcepassword` steht (nicht deine Login-E-Mail).
 
-→ **Set up source** → Verbindungstest grün. 📸 **Screenshot 1:** erfolgreich angelegte Source.
+→ **Set up source** → Verbindungstest grün.
 > Der **erste** Connector-Test dauert ~1 Min (Airbyte startet dafür einen Connector-Pod im Cluster).
+
+![Postgres-Source – Verbindungsfelder](../pictures/03-source-postgres-config.jpg)
+
+![Postgres-Source – Update-Methode „Scan Changes with User Defined Cursor"](../pictures/04-source-postgres-update-method-cursor.jpg)
+
+![Source erfolgreich angelegt (HSO Source PostgreSQL)](../pictures/05-source-postgres-angelegt.jpg)
 
 ## Schritt 2 — Destination anlegen (PostgreSQL)
 
@@ -70,7 +76,11 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 > Das **Passwort-Feld** liegt beim Postgres-Destination unter **„Optional fields"** (aufklappen).
 > Auch hier ggf. den Browser-Autofill überschreiben (`destuser` / `destpassword`).
 
-→ **Set up destination** → Verbindungstest grün. 📸 **Screenshot 2:** erfolgreich angelegte Destination.
+→ **Set up destination** → Verbindungstest grün.
+
+![Postgres-Destination – Verbindungsfelder (Port 5434, SSL disable)](../pictures/06-destination-postgres-config.jpg)
+
+![Destination erfolgreich angelegt (HSO Dest PostgreSQL)](../pictures/07-destination-postgres-angelegt.jpg)
 
 ## Schritt 3 — Connection & Stream-Auswahl
 
@@ -86,7 +96,7 @@ Airbyte führt automatisch eine **Schema-Discovery** aus (zeigt die 7 Streams).
 - Schedule type: **Scheduled / Every 24 hours** (Default) oder **Manual** — für den Test egal,
   „Finish & Sync" startet ohnehin sofort einen Lauf.
 
-📸 **Screenshot 3:** Stream-Auswahl mit Sync-Modus `Full refresh | Overwrite`.
+![Connection-Wizard – Ziel-Auswahl](../pictures/12-connection-ziel-auswahl.jpg)
 
 ## Schritt 4 — Sync ausführen
 
@@ -97,7 +107,7 @@ von *Syncing* auf **Synced** (grüner Haken) springen.
 > Der erste Sync braucht ~1 Min Vorlauf (Sync-Pod-Start), danach geht's schnell.
 > Verifizierter Lauf: **fm_gebaeude 25 loaded**, **k_plz 34.172 loaded** (= Source-Zeilen).
 
-📸 **Screenshot 4:** Status-Seite mit beiden Streams **Synced** + Record-Zahlen.
+![Status-Seite – Streams werden synchronisiert (fm_gebaeude, k_plz)](../pictures/08-connection-pg-pg-sync.jpg)
 
 ## Schritt 5 — Ergebnis verifizieren (Ziel-DB)
 
@@ -109,7 +119,7 @@ docker exec -it hso_dest_postgres psql -U destuser -d destdb -c "SELECT count(*)
 ```
 
 Erwartet: `fm_gebaeude` = 25, `k_plz` = 34.172 (entspricht der Source).
-📸 **Screenshot 5:** Zeilenzahlen in der Ziel-DB (Nachweis, dass Daten angekommen sind).
+*(Hier ggf. einen Terminal-Screenshot der Zeilenzahlen einfügen — Nachweis, dass die Daten angekommen sind.)*
 
 ---
 
@@ -141,8 +151,14 @@ Zum Vergleich kann dieselbe Source zusätzlich nach MySQL synchronisiert werden
 (`host.docker.internal:3306`, SSL **aus**, JDBC-Param `allowPublicKeyRetrieval=true`,
 Raw table database `destdb`) — Details in [airbyte-setup.md](airbyte-setup.md), Kap. 6.
 
+![MySQL-Destination – Optional fields (Passwort, SSL-Toggle, JDBC-Params, Raw-DB)](../pictures/09-destination-mysql-config.jpg)
+
 ## Optional: File-Connector (Flatfile-ETL)
 
 Studierendendaten (`hso_students`) liegen wegen der defekten CSV nur als Flatfile vor
 und werden über den **File-Connector** (`/local/hso_students.csv`, Trennzeichen `|`)
 eingebunden — siehe [airbyte-setup.md](airbyte-setup.md), Kap. 7.
+
+![File-Connector – Connector-Auswahl/Formular](../pictures/10-source-file-connector.jpg)
+
+![File-Source hso_students – Storage Provider „local", URL `/local/hso_students.csv`](../pictures/11-source-file-hso-students.jpg)
