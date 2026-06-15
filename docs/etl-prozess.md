@@ -184,7 +184,8 @@ Für die Connection muss als Source dann der entsprechende File-Connector mit de
 
 ![Excel-File-Connector](../pictures/excel_file_connector.png)
 ‎
-Nach dem erfolgreichen Sync ist fm_stamm mit *1245* Daten befüllt.
+
+Nach dem erfolgreichen Sync ist fm_stamm mit *1.245* Daten befüllt.
 
 
 
