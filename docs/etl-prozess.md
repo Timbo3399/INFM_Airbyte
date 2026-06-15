@@ -174,6 +174,8 @@ Jedoch erfordert die Verarbeitung von Datumsfeldern via Airbyte-File-Connector e
 
 **Lösung:** Direkt in Excel die Datums-Spalte mit `=TEXT(Zelle; "JJJJ-MM-TT")` überarbeiten.
 
+*Alternative: Datei als CSV konvertieren, damit funktioniert es direkt zuverlässig.*
+
 Anschließend ist der Vorgang äquivalent zu dem Einlesen der Studentendaten, wobei die Daten mit einem File-Connector übertragen werden müssen - siehe [airbyte-setup.md](airbyte-setup.md), Kap. 7.
 Hierfür muss zuerst die rooms.xltx Datei in den kind-node gemountet werden.
 Dafür muss die Datei "rooms.xltx" zunächst in den Ordner sql/source/data verschoben werden, damit die Datei in /local/ im node sichtbar wird.
@@ -182,7 +184,6 @@ Für die Connection muss als Source dann der entsprechende File-Connector mit de
 
 ![Excel-File-Connector](../pictures/excel_file_connector.png)
 ‎
-
 Nach dem erfolgreichen Sync ist fm_stamm mit *1245* Daten befüllt.
 
 
