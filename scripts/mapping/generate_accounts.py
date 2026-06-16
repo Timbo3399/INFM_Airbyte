@@ -26,24 +26,29 @@ def generate_account(firstname: str, surname: str) -> str:
     return raw[:8]
 
 
-conn = psycopg2.connect(**DB)
-cur = conn.cursor()
+def main():
+    conn = psycopg2.connect(**DB)
+    cur = conn.cursor()
 
-# Spalte anlegen falls noch nicht vorhanden
-cur.execute("ALTER TABLE hso_students ADD COLUMN IF NOT EXISTS user_id VARCHAR(20)")
-conn.commit()
+    # Spalte anlegen falls noch nicht vorhanden
+    cur.execute("ALTER TABLE hso_students ADD COLUMN IF NOT EXISTS user_id VARCHAR(20)")
+    conn.commit()
 
-cur.execute("SELECT mtknr, firstname, surname FROM hso_students WHERE user_id IS NULL")
-rows = cur.fetchall()
+    cur.execute("SELECT mtknr, firstname, surname FROM hso_students WHERE user_id IS NULL")
+    rows = cur.fetchall()
 
-updated = 0
-for mtknr, firstname, surname in rows:
-    uid = generate_account(firstname or '', surname or '')
-    if uid:
-        cur.execute("UPDATE hso_students SET user_id = %s WHERE mtknr = %s", (uid, mtknr))
-        updated += 1
+    updated = 0
+    for mtknr, firstname, surname in rows:
+        uid = generate_account(firstname or '', surname or '')
+        if uid:
+            cur.execute("UPDATE hso_students SET user_id = %s WHERE mtknr = %s", (uid, mtknr))
+            updated += 1
 
-conn.commit()
-cur.close()
-conn.close()
-print(f"user_id für {updated} Studierende gesetzt.")
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"user_id für {updated} Studierende gesetzt.")
+
+
+if __name__ == "__main__":
+    main()
