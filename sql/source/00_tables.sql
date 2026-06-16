@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS hso_students (
     kollegsemester    INTEGER,
     practicalsemester INTEGER,
     leavesemester     INTEGER,
-    stg_key           VARCHAR(20),
+    stg_key           VARCHAR(50),   -- Werte bis 27 Zeichen (gequotetes Pipe-Feld)
     stg               VARCHAR(20),
     fach              VARCHAR(10),
     degree            VARCHAR(10),
@@ -134,9 +134,13 @@ CREATE TABLE IF NOT EXISTS hso_students (
     studysemester     INTEGER,
     curriculumsemester INTEGER,
     progressvector    VARCHAR(255),
-    subjectfocus      VARCHAR(100),
+    subjectfocus      VARCHAR(255),
     h1_syncVers       VARCHAR(50),
     dbversion         VARCHAR(50),
     createdat         TIMESTAMP,
     updatedat         TIMESTAMP
 );
+
+-- Hinweis: fm_rna, hso_personal, anredetitel, k_hochschule und k_res werden NICHT
+-- hier angelegt, sondern von ihren Python-Loadern per CREATE TABLE IF NOT EXISTS
+-- (scripts/load_json.py, scripts/load_lookups.py). Schema-Quelle ist dort der Loader.

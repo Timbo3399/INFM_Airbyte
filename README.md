@@ -133,14 +133,15 @@ INFM_Airbyte/
 │   └── source/
 │       ├── 00_tables.sql       ← Tabellen-Schema für source-postgres
 │       ├── 01_load_data.sql    ← nur Doku-Hinweis (COPY entfernt, s. u.)
-│       └── data/               ← CSV-Quelldateien (per Python-Loader geladen, NICHT
-│                                  per COPY; zugleich /local-Mount für File-Connector):
-│                                  hso_students, fm_gebaeude, fm_inst, k_plz, anredetitel
+│       └── data/               ← Quelldateien für den File-Connector (/local-Mount im
+│                                  kind-Node): hso_students, fm_gebaeude, fm_inst,
+│                                  k_plz, rooms.xltx
 │
-├── data/
-│   ├── csv/k_res/              ← k_res1–13 CSV-Dateien (für File-Connector)
-│   ├── js/                     ← hso_accountgenerator.js (Account-Logik, Referenz)
-│   └── json/                   ← JSON-Dateien (fm_rna, hso_personal)
+├── data/                       ← Quelldaten nur für die Host-Loader (nicht im /local-Mount)
+│   ├── csv/                    ← anredetitel, k_hochschule + k_res/ (k_res1–13) → load_lookups.py
+│   ├── js/                     ← hso_accountgenerator.js (HSO-Original-Logik, REFERENZ –
+│   │                             nicht geladen; portiert in mapping/generate_accounts.py)
+│   └── json/                   ← fm_rna.json, hso_personal.json → load_json.py
 │
 ├── docker/fileserver/          ← nginx-Config für den CSV-File-Server
 │
@@ -163,6 +164,9 @@ INFM_Airbyte/
     ├── load_fm_inst.py                 ← lädt fm_inst (Semikolon-CSV, 86→24 Spalten)
     ├── load_fm_gebaeude.py             ← lädt fm_gebaeude (repariert kaputte Zeilen)
     ├── load_k_plz.py                   ← lädt k_plz (filtert eingebettete Header)
+    ├── load_lookups.py                 ← lädt anredetitel, k_hochschule, k_res
+    ├── load_hso_students.py            ← lädt hso_students (quote-bewusster Pipe-Parser)
+    ├── load_fm_stamm.py                ← lädt fm_stamm aus rooms.xltx (ETL-Mapping)
     ├── mapping/                        ← Szenario 4: Account-Generator
     └── images/                         ← Szenario 3: BLOB-Im-/Export
 ```

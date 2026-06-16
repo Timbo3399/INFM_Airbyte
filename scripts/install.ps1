@@ -9,7 +9,8 @@
 #   5. Datenbank-Stack starten
 #   6. Warten bis alle Container healthy sind
 #   7. Testdaten in source-postgres laden (tolerante Python-Loader: load_json,
-#      load_fm_inst, load_fm_gebaeude, load_k_plz - Host-Python ODER Docker-Fallback)
+#      load_fm_inst, load_fm_gebaeude, load_k_plz, load_lookups, load_hso_students,
+#      load_fm_stamm - Host-Python ODER Docker-Fallback)
 #   8. Verbindungsinfos ausgeben
 
 $ErrorActionPreference = "Stop"
@@ -182,17 +183,23 @@ if ($elapsed -ge $maxWaitSec) {
 
 # --- 7. JSON-Daten in source-postgres laden ----------------------------------
 
-Write-Step "Testdaten laden (fm_rna, hso_personal, fm_inst, fm_gebaeude, k_plz)"
+Write-Step "Testdaten laden (fm_rna, hso_personal, fm_inst, fm_gebaeude, k_plz, anredetitel, k_hochschule, k_res, hso_students, fm_stamm)"
 
 if ($pythonCmd) {
-    # Host-Python vorhanden: psycopg2-binary sicherstellen und Loader direkt ausfuehren.
+    # Host-Python vorhanden: psycopg2-binary + openpyxl sicherstellen und Loader direkt ausfuehren.
+    # openpyxl wird von load_fm_stamm.py (rooms.xltx) benoetigt.
     & $pythonCmd -m pip show psycopg2-binary 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
         Write-Host "    Installiere psycopg2-binary..." -ForegroundColor DarkGray
         & $pythonCmd -m pip install psycopg2-binary --quiet
     }
+    & $pythonCmd -m pip show openpyxl 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "    Installiere openpyxl..." -ForegroundColor DarkGray
+        & $pythonCmd -m pip install openpyxl --quiet
+    }
     $loadOk = $true
-    foreach ($loader in @("load_json.py", "load_fm_inst.py", "load_fm_gebaeude.py", "load_k_plz.py")) {
+    foreach ($loader in @("load_json.py", "load_fm_inst.py", "load_fm_gebaeude.py", "load_k_plz.py", "load_lookups.py", "load_hso_students.py", "load_fm_stamm.py")) {
         & $pythonCmd "$ROOT\scripts\$loader"
         if ($LASTEXITCODE -ne 0) { $loadOk = $false }
     }
@@ -209,7 +216,7 @@ if ($pythonCmd) {
         --env-file "$ROOT\.env" `
         -e SOURCE_PG_HOST=hso_source_postgres -e SOURCE_PG_PORT=5432 `
         -v "${ROOT}:/app" -w /app python:3.12-slim `
-        sh -c "pip install --quiet psycopg2-binary && python scripts/load_json.py && python scripts/load_fm_inst.py && python scripts/load_fm_gebaeude.py && python scripts/load_k_plz.py"
+        sh -c "pip install --quiet psycopg2-binary openpyxl && python scripts/load_json.py && python scripts/load_fm_inst.py && python scripts/load_fm_gebaeude.py && python scripts/load_k_plz.py && python scripts/load_lookups.py && python scripts/load_hso_students.py && python scripts/load_fm_stamm.py"
     if ($LASTEXITCODE -eq 0) {
         Write-Ok "Testdaten erfolgreich geladen (via Docker)."
     } else {
