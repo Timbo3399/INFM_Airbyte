@@ -162,3 +162,34 @@ eingebunden — siehe [airbyte-setup.md](airbyte-setup.md), Kap. 7.
 ![File-Connector – Connector-Auswahl/Formular](../pictures/10-source-file-connector.jpg)
 
 ![File-Source hso_students – Storage Provider „local", URL `/local/hso_students.csv`](../pictures/11-source-file-hso-students.jpg)
+
+## Befüllung der Stammdaten aus rooms.xltx
+
+Bei fm_stamm handelt es sich um die Systemtabelle für die Räume. 
+Diese soll als Teil des ETL-Mappings mit den Daten aus "rooms.xltx" befüllt werden.
+
+Airbyte kann neben CSV-Dateien auch Excel-Dateien (darunter auch das Excel-Template Format .xltx) einlesen.
+
+Jedoch erfordert die Verarbeitung von Datumsfeldern via Airbyte-File-Connector eine explizite Formatierung als Text-String, da das native Excel-Datumsformat sowie auch die meisten anderen benutzerdefinierten Excel-Formaten nicht mit dem JSON-Serialisierungsprotokoll des Airbyte-Data-Pipelines kompatibel ist.  Die Synchronisation bricht ansonsten mit folgendem Fehler ab: `“Object of type Timestamp is not JSON serializable"`
+
+**Lösung:** Direkt in Excel die Datums-Spalte mit `=TEXT(Zelle; "JJJJ-MM-TT")` überarbeiten.
+
+*Alternative: Datei als CSV konvertieren, damit funktioniert es direkt zuverlässig.*
+
+Anschließend ist der Vorgang äquivalent zu dem Einlesen der Studentendaten, wobei die Daten mit einem File-Connector übertragen werden müssen - siehe [airbyte-setup.md](airbyte-setup.md), Kap. 7.
+Hierfür muss zuerst die rooms.xltx Datei in den kind-node gemountet werden.
+Dafür muss die Datei "rooms.xltx" zunächst in den Ordner sql/source/data verschoben werden, damit die Datei in /local/ im node sichtbar wird.
+
+Für die Connection muss als Source dann der entsprechende File-Connector mit der Source PostgreSQL als Destination angelegt werden. 
+
+![Excel-File-Connector](../pictures/excel_file_connector.png)
+‎
+Nach dem erfolgreichen Sync ist fm_stamm mit *1245* Daten befüllt.
+
+
+
+
+
+
+
+
