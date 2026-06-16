@@ -152,7 +152,8 @@ INFM_Airbyte/
 │   ├── airbyte-setup.md        ← Airbyte installieren & konfigurieren
 │   ├── etl-prozess.md          ← Runbook: erster ETL-Prozess
 │   ├── testszenarien.md        ← Konkrete Testfälle
-│   └── zwischenbericht.md      ← Zwischenbericht (Abgabe 7.6.)
+│   ├── zwischenbericht.md      ← Zwischenbericht (Abgabe 7.6.)
+│   └── betreuer-feedback-2026-06-09.md  ← Betreuer-Feedback + unsere Reaktion
 │
 └── scripts/                    ← .ps1 = Windows · .sh = Linux/macOS (gleiche Logik)
     ├── install.ps1 · install.sh        ← Komplett-Setup (DB-Stack + Testdaten)
