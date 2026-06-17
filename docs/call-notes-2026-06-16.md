@@ -116,8 +116,35 @@ Definition haben.
 ## 4. Monitoring
 
 ### Logs
-- **Sync-Logs:** Airbyte-UI → Connection → **Job History** → Sync anklicken → Logs
+- **Sync-Logs:** 
+    - Airbyte-UI → Connection → **Job History** → Sync anklicken → Logs
   (gelesene/geschriebene Zeilen, Fehler, Dauer).
+    - Airbyte-UI → Connections → entsprechende Connection anklicken -> Timeline -> auf das Punktemenü rechts neben dem entsprechenden Event klicken -> View Logs (kann auch als .txt Datei gedownloadet werden)
+        - Im Header: Attempt wählbar (wenn fehlgeschlagen), Timestamp, Anzahl extracted/geladener records, Job id, Dauer in Sekunden
+        - wenn Warning/Fail: Kurzbeschreibung: zum Beispiel: "Failure in source: Checking source connection failed - please review this connection's configuration to prevent future syncs from failing"
+        - bietet Suchfunktion, filterbar nach sources (replication-orchestrator, source, destination, platform) und filterbar nach Log levels (info, warn, error, debug, trace)
+        - Logfile: enthält weitere nützliche Informationen (zum Beispiel detailliertes Sync summary)
+          
+          Hier ein beispielhafter Auszug eines erfolgreichen Syncs:
+
+          ```json
+          {
+            "status" : "completed",
+            "recordsSynced" : 1245,
+            "bytesSynced" : 363574,
+            "startTime" : 1781532526967,
+            "endTime" : 1781532557644,
+            "totalStats" : {
+              "recordsEmitted" : 1245,
+              "recordsCommitted" : 1245
+              (...)
+ 
+            },
+            "streamStats" : [ {
+              "streamName" : "fm_stamm"
+            } ]
+          }
+
 - **Plattform-Logs:** `kubectl logs -n airbyte-abctl <pod>` (`kubectl get pods -n airbyte-abctl`).
 - **DB-Logs:** `docker compose logs source-postgres` / `dest-postgres` (`-f` für live).
 - **Unsere Skripte:** aktuell nur `print()` auf die Konsole, kein File-Logging.
@@ -126,6 +153,18 @@ Definition haben.
 ### Performance-Checks
 - **Airbyte:** UI zeigt Dauer, Zeilen, Datenvolumen pro Sync. Größter Hebel:
   **Incremental statt Full Refresh**.
+    - Aus den Logs lässt sich die Dauer der einzelnen Phasen rauslesen: 
+        - **destinationWriteStartTime, destinationWriteEndTime**: Zeitpunkt des Beginns/Endes beim Schreiben in die Ziel-DB
+        - **sourceReadStartTime , sourceReadEndTime**: Zeitpunkt des Starts/Endes beim Lesen aus der Quell-DB
+        - **replicationStartTime, replicationEndTime**: Zeitpunkt des Starts/Endes des Syncs insgesamt
+        - weitere: 
+          **meanSecondsBeforeSourceStateMessageEmitted, maxSecondsBeforeSourceStateMessageEmitted**:
+          durchschnittliche/ längste Zeitspanne, die der Airbyte Source-Connector warten musste, bis die Source-DB die Daten geliefer hat
+          und ein neues Lesezeichen (State Message) in die Pipeline gesendet werden konnte.
+          **meanSecondsBetweenStateMessageEmittedandCommitted, maxSecondsBetweenStateMessageEmittedandCommitted**:
+          durchschnittliche/ längste gemessene Zeitspanne, die ein Lesezeichen in der Airbyte-Pipeline verbracht hat.
+          (zwischen Source-Connector und Destination-Connector)
+
 - **Skripte:** Laufzeit messen (`time.perf_counter()`); `execute_values` (Batch-Insert)
   ist bereits gesetzt; bei Bedarf `page_size` erhöhen.
 - **Ziel-DB:** `EXPLAIN ANALYZE` für langsame Abfragen; Indizes prüfen
