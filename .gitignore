@@ -36,3 +36,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+config.yaml
+data/images/
