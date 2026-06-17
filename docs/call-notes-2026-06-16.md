@@ -144,6 +144,7 @@ Definition haben.
               "streamName" : "fm_stamm"
             } ]
           }
+    - Logs über die Airbyte API auszulesen ist aktuell noch nicht möglich (ggf. noch Umwege prüfen)
 
 - **Plattform-Logs:** `kubectl logs -n airbyte-abctl <pod>` (`kubectl get pods -n airbyte-abctl`).
 - **DB-Logs:** `docker compose logs source-postgres` / `dest-postgres` (`-f` für live).
