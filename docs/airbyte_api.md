@@ -18,14 +18,19 @@ Falls defaultmäßig noch keine Application vorhanden ist, muss über "Create an
 ### Token manuell über die UI holen ###
 
 Bei Applications muss auf "Default User Application" gehovert werden, dann erscheint der Button *"Generate access token"*
+
 **Wichtig: Der Token wird nur einmal angezeigt. Bei Verlust muss ein neuer Key generiert werden.**
+
+![Airbyte-API Access-Token from UI](../pictures/14-Airbyte-API-Access-Token.png)
 
 ### Token über die Kommandozeile holen ###
 
 Mit folgendem Request, kann sich der Token programmatisch geholt werden.
-Die **Client-ID** und das **Client-Secret** müssen dafür zunächst aus der Applications Abschnitt ausgelesen werden.
 
-`curl --request POST \
+Die **Client-ID** und das **Client-Secret** müssen dafür zunächst aus dem Applications Abschnitt ausgelesen werden.
+
+```json
+curl --request POST \
      --url http://localhost:8000/api/public/v1/applications/token \
      --header 'accept: application/json' \
      --header 'content-type: application/json' \
@@ -35,7 +40,7 @@ Die **Client-ID** und das **Client-Secret** müssen dafür zunächst aus der App
   "client_secret": "<YOUR_CLIENT_SECRET>",
   "grant-type": "client_credentials"
 }
-'`
+```
 
 Bei Erfolg hält man einen Response mit dem Access-Token in folgender Form:
 
@@ -53,10 +58,12 @@ Der generierte Access-Token muss anschließend für alle Requests zur Authentifi
 
 **Im Folgenden wird ein GET-Request durchgeführt, um alle Airbyte Source-Connectors aufzulisten.**
 
-`curl --request GET \
+```json
+curl --request GET \
      --url 'http://localhost:8000/api/public/v1/sources' \
      --header 'accept: application/json' \
-     --header 'authorization: Bearer <YOUR_ACCESS_TOKEN>'`
+     --header 'authorization: Bearer <YOUR_ACCESS_TOKEN>'
+```
 
 **Die Response wird in dieser Form zurückgesendet:**
 
@@ -85,6 +92,6 @@ Der generierte Access-Token muss anschließend für alle Requests zur Authentifi
 }
 ```
 
-Auf diese Weise lassen sich auch Automatisierung umsetzen.
+Auf diese Weise lässt sich auch Automatisierung umsetzen.
 
 Die Airbyte-API Doku mit allen möglichen Requests: <https://reference.airbyte.com/reference/getting-started>
