@@ -72,10 +72,13 @@ else
   ok "Alle Container sind healthy."
 fi
 
-cyan "Testdaten laden (fm_rna, hso_personal, fm_inst, fm_gebaeude, k_plz)"
-loaders="scripts/load_json.py scripts/load_fm_inst.py scripts/load_fm_gebaeude.py scripts/load_k_plz.py"
+cyan "Testdaten laden (fm_rna, hso_personal, fm_inst, fm_gebaeude, k_plz, anredetitel, k_hochschule, k_res, hso_students, fm_stamm)"
+loaders="scripts/load_json.py scripts/load_fm_inst.py scripts/load_fm_gebaeude.py scripts/load_k_plz.py scripts/load_lookups.py scripts/load_hso_students.py scripts/load_fm_stamm.py"
 if command -v python3 >/dev/null 2>&1 && python3 -c "import psycopg2" >/dev/null 2>&1; then
-  # Host-Python mit psycopg2 vorhanden -> direkt nutzen
+  # Host-Python mit psycopg2 vorhanden -> direkt nutzen.
+  # openpyxl wird von load_fm_stamm.py (rooms.xltx) benoetigt.
+  python3 -c "import openpyxl" >/dev/null 2>&1 || python3 -m pip install --quiet openpyxl \
+    || warn "openpyxl-Installation fehlgeschlagen - load_fm_stamm.py wird ggf. abbrechen."
   for l in $loaders; do python3 "$l"; done
   ok "Testdaten erfolgreich geladen (Host-Python)."
 else
@@ -84,7 +87,7 @@ else
   docker run --rm --network airbyte_net --env-file .env \
     -e SOURCE_PG_HOST=hso_source_postgres -e SOURCE_PG_PORT=5432 \
     -v "$ROOT:/app" -w /app python:3.12-slim \
-    sh -c "pip install --quiet psycopg2-binary && python scripts/load_json.py && python scripts/load_fm_inst.py && python scripts/load_fm_gebaeude.py && python scripts/load_k_plz.py" \
+    sh -c "pip install --quiet psycopg2-binary openpyxl && python scripts/load_json.py && python scripts/load_fm_inst.py && python scripts/load_fm_gebaeude.py && python scripts/load_k_plz.py && python scripts/load_lookups.py && python scripts/load_hso_students.py && python scripts/load_fm_stamm.py" \
     && ok "Testdaten erfolgreich geladen (via Docker)." \
     || warn "Laden fehlgeschlagen - manuell: docker ... python scripts/load_*.py"
 fi

@@ -183,14 +183,5 @@ Dafür muss die Datei "rooms.xltx" zunächst in den Ordner sql/source/data versc
 Für die Connection muss als Source dann der entsprechende File-Connector mit der Source PostgreSQL als Destination angelegt werden. 
 
 ![Excel-File-Connector](../pictures/excel_file_connector.png)
-‎
 
 Nach dem erfolgreichen Sync ist fm_stamm mit *1.245* Daten befüllt.
-
-
-
-
-
-
-
-

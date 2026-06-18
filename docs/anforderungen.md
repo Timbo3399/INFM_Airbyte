@@ -42,13 +42,18 @@ Stand: 2026-06-06. Legende: ✅ erledigt · ◑ teilweise/in Arbeit · ○ offen
 
 (siehe auch [zwischenbericht.md](zwischenbericht.md), Kap. 6)
 
-1. **`hso_students.csv`** strukturell defekt (mehr Datenspalten als Header) → blockiert Szenario 4. Korrigierte Datei / Soll-Struktur?
-2. **`fm_stamm`** (Raumstammdaten): keine Quelldatei vorhanden — woher kommen die Daten?
-3. **Informix**-Anbindung: kein OSS-Airbyte-Connector. Ist Informix zwingend, oder reicht PG/MySQL für die Evaluation?
-4. **Code-Snippet-Ausführung** (A7) ist Airbytes größte Lücke ggü. Talend. Wie wichtig ist dieses Kriterium für die Bewertung?
-5. **SOAP/HISinOne**-Zugang (Szenario 6b) wird testweise bereitgestellt — wann?
-6. **Sync-Strategie** Cursor (`updatedat`) statt CDC — für die Evaluation ausreichend?
-7. **Szenario-Priorisierung** für die Bewertung?
+**Am 09.06.2026 beantwortet** (Details + Reaktion: [betreuer-feedback-2026-06-09.md](betreuer-feedback-2026-06-09.md)):
+
+- **(1) `hso_students.csv`** → „roh wie beim Export"; eigene Alternative + Doku. ✅ gelöst ([`load_hso_students.py`](../scripts/load_hso_students.py), 5.052 Zeilen).
+- **(2) `fm_stamm`** → Systemtabelle, selbst via ETL-Mapping aus `rooms.xltx` befüllen. ✅ umgesetzt ([`load_fm_stamm.py`](../scripts/load_fm_stamm.py), 1.245 Zeilen).
+- **(6) Sync-Strategie** → Cursor (`updatedat`) genügt. ◑ Vergleich in [airbyte-setup.md §5](airbyte-setup.md); Detail-Abschnitt offen.
+- **(7) Szenario-Priorisierung** → Herangehensweise + Doku zählen, nicht das Lösen aller Szenarien. ✅
+
+**Weiterhin offen** (vom Betreuer nicht adressiert):
+
+- **(3) Informix**-Anbindung: kein OSS-Airbyte-Connector. Ist Informix zwingend, oder reicht PG/MySQL für die Evaluation?
+- **(4) Code-Snippet-Ausführung** (A7) ist Airbytes größte Lücke ggü. Talend. Wie wichtig ist dieses Kriterium für die Bewertung?
+- **(5) SOAP/HISinOne**-Zugang (Szenario 6b) wird testweise bereitgestellt — wann?
 
 ---
 
