@@ -160,7 +160,7 @@ Definition haben.
         - **replicationStartTime, replicationEndTime**: Zeitpunkt des Starts/Endes des Syncs insgesamt
         - weitere: 
           **meanSecondsBeforeSourceStateMessageEmitted, maxSecondsBeforeSourceStateMessageEmitted**:
-          durchschnittliche/ längste Zeitspanne, die der Airbyte Source-Connector warten musste, bis die Source-DB die Daten geliefer hat
+          durchschnittliche/ längste Zeitspanne, die der Airbyte Source-Connector warten musste, bis die Source-DB die Daten geliefert hat
           und ein neues Lesezeichen (State Message) in die Pipeline gesendet werden konnte.
           **meanSecondsBetweenStateMessageEmittedandCommitted, maxSecondsBetweenStateMessageEmittedandCommitted**:
           durchschnittliche/ längste gemessene Zeitspanne, die ein Lesezeichen in der Airbyte-Pipeline verbracht hat.
@@ -171,6 +171,28 @@ Definition haben.
 - **Ziel-DB:** `EXPLAIN ANALYZE` für langsame Abfragen; Indizes prüfen
   (z. B. Index auf `updatedat` in `load_json.py` für den Cursor).
 
+## Performance pro Sync-Strategie:
+
+Getestet wird mit den Tabellen fm_gebaeude (25 Records) und k_plz (34.172 Records) (Insgesamt = 5.331.779 Bytes ~ 5,33 MB)
+TimeBetween = meanSecondsBetweenStateMessageEmittedandCommitted (zwischen Source und Destination)
+Es gibt einen relativ großen Overhead vor Start des eigentlichen Streams. (Containerstart, Verbindungsaufbau,..)
+
+Bei **Incremental-Strategien**: Benötigt Cursor mit folgender Eigenschaft: neuerer/aktualisierter Datensatz 
+muss immer höheren Cursor-Wert haben als der vorherige.
+Daher wird hierfür die Tabelle hso_personal (870 records = 275.756 Byte ~ 0,28 MB) verwendet mit updated_at als Cursor
+Hiermit können Simulationsdurchläufe mit nur wenig veränderten Datensätzen simuliert werden (+ Darstellung von Overhead).
+
+| Sync mode | Gesamtdauer Stream (Replication) | Destination Time | Source Read Time | TimeBetween | Durchsatz-Geschwindigkeit | Gesamtdauer |
+|---|---|---|---|---|---|---|
+| Full refresh/Overwrite | 36,36 s | 36,18 s | 25,1 s | 11 s | 0,14 MB/s | 104 s |
+| Full refresh/Append | 48,88 s| 48,4 s | 36,0 s | 17 s | 0,11 MB/s |96 s |
+| Full refresh/Overwrite + Deduped | 40,93 s | 29,07 s | 40,57 s | 16 s| 0,13 MB/s| 68 s|
+| Incremental/Append + Deduped | 31,26 s | 30,83 s | 20,24 s| 10 s | 0,009 MB/s | 105 s|
+| Incremental/Append | 28,96 s | 28,66 s | 17,97 s | 10 s | 0,00014 MB/s | 57 s |
+
+[Hier noch Grafiken einfügen]
+
+Es fällt auf, dass der Overhead überall relativ groß ist, daher ist Incremental im Vergleich zu Full refresh auch relativ langsam
 ---
 
 ## 5. SDK, Marketplace & Ideen
@@ -234,6 +256,7 @@ nächsten Schritte relevant:
       offenes Deliverable.
 - [ ] Sync-Modus **pro Tabelle** festlegen (Full Refresh vs. Incremental+Dedup) und in
       `connections/` dokumentieren.
+- [ ] Performance messen für die verschiedenen Sync-Modi bei größeren Datensätzen
 - [ ] **Informix / SOAP**: Custom-Connector (Python CDK) vs. Skript-in-Postgres entscheiden.
 - [ ] **File-Logging** in den Loadern statt `print()` (optional).
 - [ ] `page_size` in `load_json.py` und `load_fm_gebaeude.py` angleichen (optional).
