@@ -151,13 +151,15 @@ Alle Lösungen sind in `scripts/setup-airbyte.ps1`/`.sh` automatisiert und in
 
 ---
 
-## 6. Offene Punkte / Fragen an die Betreuer
+## 6. Fragen an die Betreuer — beantwortet (09.06.2026)
 
-1. **`hso_students.csv` Soll-Struktur?** Die Datei ist nicht eindeutig ladbar (mehr Datenspalten als Header, defektes Quoting). Ist es gewollt eine defekte Datei einzulesen, oder wird eine korrekt lesbare Datei bereitgestellt? Dies blockiert aktuell Szenario 4 (Account-Mapping in die Source-DB).
-2. **`fm_stamm`** (Raumstammdaten): Es liegt keine Quelldatei vor. Wird diese Tabelle benötigt, und woher sollen die Daten kommen?
-3. **Zugang für Betreuer:** Airbyte Community Edition ist im Wesentlichen Single-User und läuft auf `localhost`. Wie soll Ihr Zugang erfolgen? Gemeinsamer Admin-Login während des Vor-Ort-Termins, oder ist ein Remote-Zugang (z. B. Tunnel/VM) gewünscht? (Vorschlag in [zugang.md](zugang.md).)
-4. **Sync-Strategie:** Wir nutzen den Cursor-Modus (`updatedat`) statt CDC, da CDC zusätzliche PostgreSQL-Konfiguration (logical WAL, Replication Slot) erfordert. Ist CDC für die Evaluation gewünscht?
-5. **Scope:** Welche der sechs Szenarien haben für die Bewertung Priorität?
+> Vollständiges Feedback samt unserer Reaktion: [betreuer-feedback-2026-06-09.md](betreuer-feedback-2026-06-09.md).
+
+1. **`hso_students.csv` Soll-Struktur?** → Daten sind „roh wie beim Export"; eigene Alternative finden + dokumentieren. ✅ Gelöst per quote-bewusstem Loader ([`load_hso_students.py`](../scripts/load_hso_students.py), 5.052 Zeilen).
+2. **`fm_stamm` (Raumstammdaten):** → Systemtabelle für Räume, selbst via ETL-Mapping aus `rooms.xltx` befüllen. ✅ Umgesetzt ([`load_fm_stamm.py`](../scripts/load_fm_stamm.py), 1.245 Zeilen).
+3. **Zugang für Betreuer:** → Live-System bei der Abschlusspräsentation genügt; Installation + First-Steps gut dokumentieren. ✅ Doku vorhanden ([installation-guide.md](installation-guide.md), [etl-prozess.md](etl-prozess.md), [zugang.md](zugang.md)).
+4. **Sync-Strategie:** → Cursor-Modus über Zeitstempel (`updatedat`) genügt. ◑ Methodenvergleich in [airbyte-setup.md §5](airbyte-setup.md); ausführlicher Vor-/Nachteile-+-Aufwand-Abschnitt noch offen.
+5. **Scope:** → Herangehensweise + dokumentierte Lösungen zählen, nicht das vollständige Lösen aller sechs Szenarien. ✅ Zur Kenntnis genommen.
 
 ---
 

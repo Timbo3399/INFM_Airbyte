@@ -15,15 +15,15 @@ Ziel: Evaluierung von Airbyte als ETL-Tool für die Hochschul-IT (Ersatz für Ta
 
 | Datei / Tabelle | Format | Inhalt | Zeilen | In source-postgres |
 |-----------------|--------|--------|--------|--------------------|
-| `hso_students` | Pipe-CSV | Studierende (anonym.) | ~1.500 | ⚠️ nicht in Source-DB (CSV defekt) – nur via File-Connector |
+| `hso_students` | Pipe-CSV | Studierende (anonym.) | 5.052 | `hso_students` (via load_hso_students.py, quote-bewusster Parser) + zusätzlich via File-Connector |
 | `fm_gebaeude` | CSV | Gebaeude der Hochschule | 25 | `fm_gebaeude` (via load_fm_gebaeude.py) |
 | `fm_inst` | Semikolon-CSV | Institute / Org-Einheiten | ~2.080 | `fm_inst` (via load_fm_inst.py) |
-| `fm_stamm` | - | Raumstammdaten (geb+inst) | 0 (leer), (nach ETL-Mapping 1.245) | `fm_stamm` (Tabelle vorhanden, ohne Daten) - wird als Teil des ETL-Mappings befüllt mit Daten aus der Datei "rooms.xltx" |
+| `fm_stamm` | Excel (.xltx) | Raumstammdaten (Räume) | 1.245 (nach ETL-Mapping) | `fm_stamm` (via ETL-Mapping aus rooms.xltx befüllt – siehe load_fm_stamm.py) |
 | `k_plz` | CSV | PLZ-Verzeichnis Deutschland | ~34.000 | `k_plz` (via load_k_plz.py) |
 | `fm_rna.json` | JSON | Raumnutzungsarten | ~380 | `fm_rna` (via load_json.py) |
 | `hso_personal.json` | JSON | Personal HSO (anonym.) | ~870 | `hso_personal` (via load_json.py) |
-| `k_res*.csv` | Semikolon-CSV | Klassifikations-Lookups | je ~5-20 | - |
-| `hso_accountgenerator.js` | JavaScript | Account-Name-Logik | - | - |
+| `k_res*.csv` | Semikolon-CSV | Klassifikations-Lookups | je ~5-20 | `k_res` (8 Dateien konsolidiert via load_lookups.py) |
+| `hso_accountgenerator.js` | JavaScript | Account-Name-Logik (HSO-Original, **Referenz**) | – | – (nicht geladen; portiert → `generate_accounts.py`) |
 
 ---
 
@@ -48,7 +48,7 @@ Ziel: Evaluierung von Airbyte als ETL-Tool für die Hochschul-IT (Ersatz für Ta
 **Ziel:** Vertrautmachen mit Airbyte, grundlegende Datenbankanbindungen testen.
 
 **Aufgaben:**
-- Bestehende Testdaten (k_res*.csv, k_plz, k_abstgv) in MySQL und PostgreSQL laden
+- Bestehende Testdaten (k_res*.csv, k_plz) in MySQL und PostgreSQL laden
 - Verschiedene Source-Typen testen: Postgres-Source, File-Connector
 
 **Airbyte-Konfiguration:**
@@ -189,7 +189,9 @@ conn.close()
 
 **Ziel:** Anonymisierte Daten mit realistischen Werten befüllen; Account-IDs generieren; in neue Tabellen schreiben.
 
-**Account-Generierungs-Logik** (`data/js/hso_accountgenerator.js`):
+**Account-Generierungs-Logik** — Referenz-Artefakt `data/js/hso_accountgenerator.js`
+(HSO-Original aus HISinOne, **wird nicht ausgeführt**; produktiv nach
+`scripts/mapping/generate_accounts.py` portiert):
 ```
 account = (Vorname[0] + Nachname).toLowerCase()[0:8]
           (Umlaute ersetzen: ä→ae, ö→oe, ü→ue, ß→ss)

@@ -1,24 +1,31 @@
--- Testdaten werden NICHT mehr per COPY in dieser Init-Datei geladen.
+-- Testdaten werden NICHT per COPY in dieser Init-Datei geladen.
 --
 -- Grund: Die Quell-CSVs sind fuer ein direktes COPY zu unsauber:
 --   * eingebettete Header-Zeilen mitten in den Daten (k_plz, fm_gebaeude)
 --   * unquotierte Trennzeichen in Textfeldern (fm_gebaeude, fm_inst)
---   * doppelt-kodierte Umlaute ("GebÃ¤ude") und vereinzelt NUL-Bytes (fm_inst)
+--   * gequotete Pipe-Felder (hso_students), doppelt-kodierte Umlaute ("GebÃ¤ude")
+--     und vereinzelt NUL-Bytes (fm_inst)
 -- COPY laeuft im Postgres-Init mit ON_ERROR_STOP und brach beim ersten Fehler ab,
 -- wodurch ALLE folgenden Tabellen leer blieben.
 --
 -- Stattdessen laden tolerante Python-Loader die Daten NACH dem Container-Start.
--- Sie werden von scripts/install.ps1 ausgefuehrt (Host-Python ODER Docker-Fallback):
---   fm_gebaeude  -> scripts/load_fm_gebaeude.py
---   k_plz        -> scripts/load_k_plz.py
---   fm_inst      -> scripts/load_fm_inst.py
---   fm_rna       -> scripts/load_json.py
---   hso_personal -> scripts/load_json.py
+-- Sie werden von scripts/install.ps1 / install.sh ausgefuehrt (Host-Python ODER
+-- Docker-Fallback) in dieser Reihenfolge:
+--   fm_rna, hso_personal          -> scripts/load_json.py        (data/json/*.json)
+--   fm_inst                       -> scripts/load_fm_inst.py     (sql/source/data/fm_inst.csv)
+--   fm_gebaeude                   -> scripts/load_fm_gebaeude.py (sql/source/data/fm_gebaeude.csv)
+--   k_plz                         -> scripts/load_k_plz.py       (sql/source/data/k_plz.csv)
+--   anredetitel, k_hochschule,    -> scripts/load_lookups.py     (data/csv)
+--     k_res
+--   hso_students                  -> scripts/load_hso_students.py (sql/source/data/hso_students.csv)
+--   fm_stamm                      -> scripts/load_fm_stamm.py    (sql/source/data/rooms.xltx, braucht openpyxl)
 --
--- Nicht geladen:
---   * hso_students.csv ist strukturell defekt (Datenzeilen haben mehr Spalten als
---     der eigene Header). Studierendendaten daher ueber den Airbyte File-Connector
---     beziehen (siehe docs/airbyte-setup.md, Abschnitt 7).
---   * fm_stamm hat keine Quelldatei -> Tabelle bleibt leer.
+-- Hinweise:
+--   * hso_students.csv ist pipe-getrennt mit gequoteten Feldern (Diagnose "mehr
+--     Spalten als der Header" war falsch); ein quote-bewusster Parser laedt alle
+--     5.052 Zeilen. Zusaetzlich auch via Airbyte File-Connector verfuegbar
+--     (siehe docs/airbyte-setup.md, Abschnitt 7).
+--   * fm_stamm wird als Teil des ETL-Mappings aus rooms.xltx befuellt (1.245 Zeilen).
 --
--- Die Tabellen-Schemata werden weiterhin in 00_tables.sql angelegt.
+-- Die Tabellen-Schemata fuer fm_gebaeude, fm_inst, k_plz, fm_stamm und hso_students
+-- werden weiterhin in 00_tables.sql angelegt; die uebrigen Tabellen legen ihre Loader an.

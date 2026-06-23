@@ -1,3 +1,16 @@
+/* ============================================================================
+ * REFERENZ-ARTEFAKT — wird NICHT ausgefuehrt und NICHT in eine DB geladen.
+ *
+ * Originale Account-Namens-Logik der Hochschule Offenburg (HSOG) aus dem
+ * Quellsystem (HISinOne). Dient als Spezifikation/Provenienz fuer Szenario 4
+ * (Mapping von Studenten / Personal).
+ *
+ * Produktiv genutzt wird die Python-Portierung dieser Logik in
+ *   scripts/mapping/generate_accounts.py   (schreibt user_id in hso_students).
+ *
+ * Schema: account = kurz(8) aus Vorname[0] + Nachname, lowercase, ohne
+ *         Leerzeichen, Umlaute/Akzente normalisiert.
+ * ============================================================================ */
 function accNameGen() {
   	 /*
      HSOG: Account = maxLength-8(Vorname1.Buchstabe + Nachname + **(Anzahlaccounts_mit_dem_Schema +1)**)

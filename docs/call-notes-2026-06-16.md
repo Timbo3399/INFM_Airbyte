@@ -5,6 +5,14 @@ das lokale Airbyte-Setup (`abctl`/kind, Source-PostgreSQL → Ziel-PostgreSQL & 
 Python-Loader für die Source-Befüllung). Siehe auch [architektur.md](architektur.md)
 und [airbyte-setup.md](airbyte-setup.md).
 
+Zusammengeführt aus den Mitschriften von Timo, Isabella und Rebecca.
+
+---
+
+## 0. Organisatorisches
+
+- **Kolloquium: Raum B121.**
+
 ---
 
 ## 1. Sync-Funktionsweise
@@ -38,6 +46,7 @@ Hängt vom **Sync-Modus** ab:
 ### Wenn ein Sync abbricht
 - **Transaktionssicher:** kein halb-importierter, kaputter Zustand in der finalen Tabelle.
 - **Automatische Retries:** mehrere Attempts pro Job vor „failed".
+  `ToDo:` genaue Anzahl/Logik der Retry-Attempts je Airbyte-Version verifizieren.
 - **Checkpointing (nur Incremental):** der nächste Lauf macht ab dem letzten Checkpoint
   weiter, nicht von vorn.
 - **Full Refresh:** kein Teil-Aufholen — der nächste Lauf macht alles neu (robust, aber teuer).
@@ -48,8 +57,10 @@ Hängt vom **Sync-Modus** ab:
   wird durch Buffer-Größe (RAM/Bytes) **oder** Record-Anzahl ausgelöst. Defaults sind
   connector-spezifisch, in der UI normalerweise nicht gesetzt. Bei self-hosted über
   Memory-Limits (`JOB_MAIN_CONTAINER_MEMORY_*`) indirekt beeinflussbar.
+  `ToDo:` Batching-Defaults und ob `JOB_MAIN_CONTAINER_MEMORY_*` der richtige Hebel ist, verifizieren.
 - **State-Checkpoint-Intervall:** bestimmt, wie oft der Fortschritt gesichert wird
   (relevant für Wiederaufnahme nach Abbruch).
+  `ToDo:` konkrete Checkpoint-Frequenz (z. B. Records pro Checkpoint) und Konfigurierbarkeit verifizieren.
 - **In unseren Skripten:** sichtbare Paketgröße = `page_size` bei `execute_values`.
   `load_k_plz.py` nutzt `page_size=1000`; die übrigen Loader nutzen den Default (100)
   → bei großen Tabellen ggf. angleichen.
@@ -74,7 +85,7 @@ Airbyte ist **ELT**, nicht ETL — keine freien Code-Snippets mitten im Sync. M�
 
 | Möglichkeit | Was geht | Was nicht |
 |---|---|---|
-| Mappings (Connection-UI) | Felder umbenennen, hashen/verschlüsseln, Zeilen filtern | keine freie Logik / Berechnungen |
+| Mappings (Connection-UI) ⚠️ **Paid (ab Plus)** | Felder umbenennen, hashen/verschlüsseln, Zeilen filtern | nicht in Core; keine freie Logik / Berechnungen |
 | Connector Builder / Low-Code CDK | eigene Quell-Connectoren (Extraktion) | keine Ziel-Transformation |
 | dbt (nach dem Load) | beliebige SQL-Transformationen | externes Tool, separat aufzusetzen |
 
@@ -147,6 +158,7 @@ Definition haben.
     - Logs über die Airbyte API auszulesen ist aktuell noch nicht möglich (ggf. noch Umwege prüfen)
 
 - **Plattform-Logs:** `kubectl logs -n airbyte-abctl <pod>` (`kubectl get pods -n airbyte-abctl`).
+  `ToDo:` echten Namespace-Namen prüfen (`kubectl get namespaces`) — `airbyte-abctl` ist nicht sicher.
 - **DB-Logs:** `docker compose logs source-postgres` / `dest-postgres` (`-f` für live).
 - **Unsere Skripte:** aktuell nur `print()` auf die Konsole, kein File-Logging.
   → Möglicher Verbesserungspunkt: `logging` mit Zeitstempel + Logfile.
@@ -204,9 +216,9 @@ Informix/SOAP.
 
 ### Kostet der Marketplace?
 **Nein.** Airbyte OSS (unser `abctl`-Setup) und **alle** Connectoren (Certified wie
-Community/Marketplace) sind kostenlos. Kostenpflichtig ist nur **Airbyte Cloud**
-(nutzungsbasiert). Kosten können höchstens auf Seiten der **Quelle** entstehen
-(bezahlte API-Tiers).
+Community/Marketplace) sind kostenlos. Kostenpflichtig sind nur die **Cloud-/Paid-Tiers**
+(siehe Editionen in Abschnitt 6). Kosten können höchstens auf Seiten der **Quelle**
+entstehen (bezahlte API-Tiers).
 
 ### Creative Connections (Demo-Ideen)
 Externe Live-Daten als Ergänzung zu den HSO-Daten — ideal: freie APIs **ohne Key**:
@@ -223,6 +235,9 @@ Externe Live-Daten als Ergänzung zu den HSO-Daten — ideal: freie APIs **ohne 
 > Empfehlung für eine Demo: Frankfurter (Wechselkurse) **oder** Energy-Charts (Green IT)
 > im Connector Builder nachbauen — beide ohne Key, ~10 Min., zeigt externe Daten im Fluss.
 
+`ToDo:` „Key nötig?"-Spalte vor der Nutzung prüfen — API-Bedingungen/Rate-Limits können
+sich ändern (v. a. Energy-Charts, CoinGecko, Frankfurter).
+
 ---
 
 ## 6. Weitere thematisch sinnvolle Punkte (ergänzt)
@@ -237,6 +252,7 @@ nächsten Schritte relevant:
 - **Schema-Änderungen (Schema Drift):** Wenn sich Quellspalten ändern, kann Airbyte
   pro Connection automatisch propagieren oder den Sync zur Bestätigung anhalten —
   Verhalten sollte bewusst gesetzt werden.
+  `ToDo:` genaue Optionen/Bezeichnungen im Connection-Setting eurer Version prüfen.
 - **Scheduling:** Sync-Intervall pro Connection (Cron) vs. manueller/API-Trigger —
   zusammen mit dem Verkettungs-Thema (Abschnitt 2) zu entscheiden.
 - **Idempotenz:** Unsere Loader sind idempotent (`TRUNCATE` + Reload); bei Airbyte
@@ -245,6 +261,48 @@ nächsten Schritte relevant:
   committen; bei API-Connectoren Keys über Config-Felder, nie hartkodiert.
 - **Versionierung der Connectoren:** Builder-Ergebnisse als `manifest.yaml` ins Repo,
   damit das Setup reproduzierbar und im Team gleich ist.
+
+### Airbyte-Angebot: Free vs. Paid (Editionen)
+Relevant ist die Produktlinie **„Data Replication"** (es gibt daneben „Airbyte Agents",
+ein separates KI-Produkt — für uns nicht relevant). Wir nutzen die **kostenlose,
+self-hosted** Edition **Core** (`abctl`/kind).
+Stand: airbyte.com/pricing, abgerufen 16.06.2026 — Preise können sich ändern.
+
+| Edition | Kosten | Hosting | Preismodell |
+|---|---|---|---|
+| **Core** (Open Source) | **kostenlos** | self-hosted (unser `abctl`-Setup) | keine Nutzungsgrenzen |
+| **Standard** | ab **$10/Monat** | Cloud (managed) | volumenbasiert (nach bewegtem Datenvolumen) |
+| **Plus** | ab **$500/Monat** | Cloud (managed) | volumenbasiert + Credit-System (50 Credits inkl.) |
+| **Pro** | individuell | Cloud (managed) | kapazitätsbasiert (Data Workers) |
+| **Enterprise Flex** | individuell | Cloud (managed) | kapazitätsbasiert |
+
+**Was in der kostenlosen Edition (Core) enthalten ist:**
+- **600+ Connectoren** — keine Paywall
+- **Change Data Capture (CDC)** und **Schema-Propagation**
+- Connector Builder, Low-Code & Python CDK
+- Alle Sync-Modi (Full Refresh, Incremental, Dedup), Scheduling, API
+- Keine Nutzungs-/Volumengrenzen
+
+**Was nur in den Paid-Tiers dazukommt:**
+- **Managed Hosting** (kein eigener Betrieb nötig) — ab *Standard*
+- **15-Minuten-Syncs** und **Custom Mappings** — ab *Plus* ⚠️ (Mappings sind **nicht** in Core!)
+- **SSO, RBAC, mehrere Workspaces, Governance, Premium-Support** — ab *Pro*
+- **Erweiterte Data Governance, mehrere Daten-Regionen, Priority-Support** — *Enterprise Flex*
+
+> **Fazit für uns:** Funktional reicht **Core** vollständig aus — sogar CDC und alle
+> 600+ Connectoren sind kostenlos. Der Paid-Mehrwert liegt im Betrieb (Managed Hosting,
+> Support, Governance) und in Komfort-Features (Custom Mappings, 15-Min-Syncs), nicht in
+> den Connectoren oder Kern-Sync-Funktionen.
+
+### Anwendungen / Anwendungsfälle
+Wofür der Data-Hub konkret genutzt werden kann:
+
+- **Datenkonsolidierung:** verteilte Hochschulquellen (Studierende, Gebäude, Institute,
+  Personal, PLZ) in ein gemeinsames Zielsystem zusammenführen.
+- **Reporting/Analytics:** konsolidierte Ziel-DB als Basis für Auswertungen/Dashboards.
+- **Migration/Sync zwischen Systemen:** PostgreSQL ↔ MySQL als Destination-Vergleich.
+- **Anreicherung mit externen Daten:** freie APIs (Wechselkurse, Green-IT/Energie) als
+  zusätzliche Streams (siehe Abschnitt 5).
 
 ---
 
@@ -256,8 +314,9 @@ nächsten Schritte relevant:
       offenes Deliverable.
 - [ ] Sync-Modus **pro Tabelle** festlegen (Full Refresh vs. Incremental+Dedup) und in
       `connections/` dokumentieren.
-- [ ] Performance messen für die verschiedenen Sync-Modi bei größeren Datensätzen
+- [x] Performance messen für die verschiedenen Sync-Modi bei größeren und kleineren Datensätzen
 - [ ] **Informix / SOAP**: Custom-Connector (Python CDK) vs. Skript-in-Postgres entscheiden.
+- [x] **Airbyte Free vs. Paid** ausarbeiten — erledigt (siehe Abschnitt 6, Stand 16.06.2026).
 - [ ] **File-Logging** in den Loadern statt `print()` (optional).
 - [ ] `page_size` in `load_json.py` und `load_fm_gebaeude.py` angleichen (optional).
 - [ ] Optional: Demo-Connector für eine freie API (Frankfurter / Energy-Charts).
