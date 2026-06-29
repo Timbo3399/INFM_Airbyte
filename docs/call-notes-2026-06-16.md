@@ -185,12 +185,8 @@ Definition haben.
 
 ## Performance pro Sync-Strategie:
 
-**Testlauf**: Getestet wird für die full refresh sync modes mit den Tabellen fm_gebaeude (25 Records) und k_plz (34.172 Records) (Insgesamt = 5.331.779 Bytes ~ 5,33 MB)
-
-Bei **Incremental-Strategien**: Benötigt Cursor mit folgender Eigenschaft: neuerer/aktualisierter Datensatz 
-muss immer höheren Cursor-Wert haben als der vorherige.
-Daher wird hierfür die Tabelle hso_personal (Insgesamt: 870 records = 275.756 Byte ~ 0,28 MB) verwendet mit updated_at als Cursor
-Hiermit können Simulationsdurchläufe mit nur wenig veränderten Datensätzen simuliert werden (+ Darstellung von Overhead).
+Zur Evaluation der Full Refresh-Strategien wurde ein Stream mit den Tabellen fm_gebaeude (25 Datensätze) und k_plz (34.172 Datensätze) mit einer Gesamtgröße von 5.331.779 Bytes (~5,33 MB) angelegt.
+Für die Incremental-Strategien wird zwingend ein Cursor-Feld benötigt, bei dem neuere Datensätze einen fortlaufend höheren Wert aufweisen. Hierfür wurde die Tabelle hso_personal (870 Datensätze, ~0,28 MB) mit der Spalte updated_at als Cursor gewählt. Dies ermöglichte realistische Simulationsdurchläufe mit minimalen Änderungen, um den Overhead von Airbyte bei kleinen Datenmengen darzustellen
 
 | Sync mode | Datenmenge | Gesamtdauer Stream (Replication) | Destination Write Time | Source Read Time | TimeBetween | Durchsatz-Geschwindigkeit | Gesamtdauer (bis in UI sichtbar)|
 |---|---|---|---|---|---|---|---|
@@ -200,14 +196,16 @@ Hiermit können Simulationsdurchläufe mit nur wenig veränderten Datensätzen s
 | Incremental/Append + Deduped | ~13 (4.01 kB) | 31,26 s | 30,83 s | 20,24 s| 10 s | 0,00013 MB/s | 105 s|
 | Incremental/Append | ~13 (4.01 kB) | 28,96 s |  28,66 s | 17,97 s | 10 s | 0,00014 MB/s | 57 s |
 
-[Hier noch Grafiken einfügen]
+(**Todo: weitere Teststrategien für Incremental bei mehreren tausend Datensätzen!**)
+
+![Performance Sync-Modes](../pictures/15-performance.png)
+
+Die Messreihen verdeutlichen, dass Airbyte, unabhängig vom Datenvolumen, einen erheblichen initialen Overhead aufweist.
+Die Gesamtlaufzeit wird stark von diesem Overhead dominiert. In der Folge erweisen sich Incremental-Strategien bei sehr kleinen Datenmengen als relativ ineffizient: Selbst wenn nur 13 Datensätze übertragen werden, beträgt die reine Stream-Dauer (Replikationszeit) fast 30 Sekunden, was die Gesamtdauer künstlich verlängert.
+Bei größeren, sich regelmäßig änderenden Datensätzen ist die Incremental Strategie jedoch sinnvoll, um das Netzerk vor Überlastung zu schützen und die Performance insgesamt zu erhöhen.
+Die Strategie: **Incremental/Append** weißt insgesamt die geringste Streamdauer (Replication) und geringste Gesamtdauer insgesamt auf.
 
 
-TimeBetween = meanSecondsBetweenStateMessageEmittedandCommitted (Wartezeit zwischen Source und Destination)
-Es gibt einen relativ großen Overhead vor Start des eigentlichen Streams. (Containerstart, Verbindungsaufbau,..)
-Es fällt auf, dass der Overhead überall relativ groß ist, daher ist Incremental im Vergleich zu Full refresh trotzdem relativ langsam,
-auch wenn Incremental-Append die kleinste Syncdauer hatte.
-Auch wenn nur sehr wenige Daten übertragen werden liegt die Replicationtime für den Stream nur knapp unter 30 Sekunden.
 ---
 
 ## 5. SDK, Marketplace & Ideen
