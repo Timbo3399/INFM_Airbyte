@@ -76,11 +76,23 @@ cyan "Testdaten laden (fm_rna, hso_personal, fm_inst, fm_gebaeude, k_plz, anrede
 loaders="scripts/load_json.py scripts/load_fm_inst.py scripts/load_fm_gebaeude.py scripts/load_k_plz.py scripts/load_lookups.py scripts/load_hso_students.py scripts/load_fm_stamm.py"
 if command -v python3 >/dev/null 2>&1 && python3 -c "import psycopg2" >/dev/null 2>&1; then
   # Host-Python mit psycopg2 vorhanden -> direkt nutzen.
-  # openpyxl wird von load_fm_stamm.py (rooms.xltx) benoetigt.
-  python3 -c "import openpyxl" >/dev/null 2>&1 || python3 -m pip install --quiet openpyxl \
-    || warn "openpyxl-Installation fehlgeschlagen - load_fm_stamm.py wird ggf. abbrechen."
-  for l in $loaders; do python3 "$l"; done
-  ok "Testdaten erfolgreich geladen (Host-Python)."
+  # openpyxl wird von load_fm_stamm.py (rooms.xltx) benoetigt. Auf PEP-668-Systemen
+  # (neuere Debian/Ubuntu) verweigert pip die System-Installation ohne --break-system-packages.
+  python3 -c "import openpyxl" >/dev/null 2>&1 \
+    || python3 -m pip install --quiet openpyxl >/dev/null 2>&1 \
+    || python3 -m pip install --quiet --break-system-packages openpyxl >/dev/null 2>&1 \
+    || warn "openpyxl konnte nicht installiert werden - load_fm_stamm.py wird ggf. uebersprungen."
+  # Loader einzeln und TOLERANT ausfuehren: ein fehlschlagender Loader (kaputte CSV,
+  # DB-Haenger, fehlendes openpyxl) darf unter 'set -e' nicht das ganze Skript killen.
+  failed=""
+  for l in $loaders; do
+    if ! python3 "$l"; then failed="$failed $l"; fi
+  done
+  if [ -z "$failed" ]; then
+    ok "Testdaten erfolgreich geladen (Host-Python)."
+  else
+    warn "Einige Loader sind fehlgeschlagen - bitte manuell pruefen/nachladen:$failed"
+  fi
 else
   # Sonst: tolerante Loader in einem Wegwerf-Container (kein Host-Python noetig)
   warn "Kein Host-Python mit psycopg2 - lade Daten ueber python:3.12-slim Container."
