@@ -181,10 +181,20 @@ Write-Host ""
 $installLog = Join-Path $env:TEMP ("abctl-install-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
 Write-Host "  Installiere Airbyte - laeuft ~5-10 Min ohne Live-Ausgabe." -ForegroundColor Yellow
 Write-Host "  Live-Fortschritt optional im zweiten Fenster: Get-Content `"$installLog`" -Wait" -ForegroundColor DarkGray
-& $ABCTL_EXE @installArgs *> $installLog
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Fail "abctl local install fehlgeschlagen (Exit-Code $LASTEXITCODE)."
+# abctl schreibt seinen Fortschritts-Spinner auf stderr (KEINE echten Fehler). Beim
+# Umleiten (*>) macht Windows-PowerShell daraus NativeCommandError-Records, die unter
+# $ErrorActionPreference='Stop' das Skript faelschlich abbrechen wuerden. Darum NUR fuer
+# diesen einen Aufruf auf 'Continue' setzen, den echten Exit-Code abgreifen und EAP
+# danach wiederherstellen - so bleiben Logfile und ruhige Konsole erhalten.
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+& $ABCTL_EXE @installArgs *> $installLog
+$installExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEAP
+
+if ($installExit -ne 0) {
+    Write-Fail "abctl local install fehlgeschlagen (Exit-Code $installExit)."
     Write-Host "  Letzte Logzeilen ($installLog):" -ForegroundColor Gray
     Get-Content $installLog -Tail 20 | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
     exit 1
