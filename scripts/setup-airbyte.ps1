@@ -57,8 +57,14 @@ Write-Host ""
 
 Write-Step "Pruefe Docker Desktop"
 
+# 'docker info' schreibt bei gestopptem Docker auf stderr -> unter $ErrorActionPreference='Stop'
+# wuerde 2>&1 das Skript mit NativeCommandError abbrechen, BEVOR die freundliche Meldung kommt.
+# Darum EAP kurz auf 'Continue'; der Erfolg wird ueber $LASTEXITCODE geprueft.
+$prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 docker info 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) {
+$dockerOk = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $prevEAP
+if (-not $dockerOk) {
     Write-Fail "Docker Desktop ist nicht gestartet."
     Write-Host "         Bitte Docker Desktop starten und erneut versuchen." -ForegroundColor Gray
     exit 1
@@ -81,7 +87,10 @@ if (-not (Test-Path $AIRBYTE_DIR)) {
 Write-Step "abctl (Airbyte CLI) herunterladen"
 
 if (Test-Path $ABCTL_EXE) {
+    # abctl kann Hinweise (z.B. Update-Notice) auf stderr schreiben -> EAP kurz entschaerfen.
+    $prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     $ver = & $ABCTL_EXE version 2>&1
+    $ErrorActionPreference = $prevEAP
     Write-Ok "abctl bereits vorhanden ($ver) - ueberspringe Download."
 } else {
     Write-Host "    Lade aktuelle Version von GitHub..." -ForegroundColor DarkGray
@@ -246,6 +255,15 @@ spec:
   storageClassName: airbyte-local-manual
   volumeName: airbyte-csv-local-pv
 "@
+    # kubectl schreibt Hinweise/Warnungen auf stderr (z.B. "Warning: ... env[146] hides
+    # previous definition of CHECK_JOB_MAIN_CONTAINER_CPU_REQUEST" beim rollout restart -
+    # harmlos, stammt aus Airbytes eigenem Deployment). Mit 2>&1 macht Windows-PowerShell
+    # daraus unter $ErrorActionPreference='Stop' terminierende NativeCommandError-Records,
+    # die das Skript faelschlich abbrechen. Darum den gesamten nativen kubectl-Block auf
+    # 'Continue' setzen - die Erfolgskontrolle laeuft ohnehin ueber $LASTEXITCODE/$pvcOk/$flagOk.
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+
     $pvcYaml | docker exec -i $KIND_NODE kubectl --kubeconfig $KUBE_CFG apply -f - 2>&1 | Out-Null
     $pvcOk = ($LASTEXITCODE -eq 0)
 
@@ -262,8 +280,10 @@ spec:
         # launcher/worker neu starten, damit sie das Flag einlesen
         docker exec $KIND_NODE kubectl --kubeconfig $KUBE_CFG rollout restart deploy/airbyte-abctl-workload-launcher deploy/airbyte-abctl-worker -n $ABCTL_NS 2>&1 | Out-Null
         docker exec $KIND_NODE kubectl --kubeconfig $KUBE_CFG rollout status deploy/airbyte-abctl-workload-launcher -n $ABCTL_NS --timeout=120s 2>&1 | Out-Null
+        $ErrorActionPreference = $prevEAP
         Write-Ok "Lokaler File-Connector-Mount aktiv (Provider 'local', URL /local/<datei>.csv)."
     } else {
+        $ErrorActionPreference = $prevEAP
         Write-Warn "Lokales File-Connector-Volume nicht vollstaendig eingerichtet (PVC ok: $pvcOk, Flag ok: $flagOk)."
         Write-Host "         ACHTUNG: Mit gesetztem Flag, aber ohne PVC 'airbyte-local-pvc' bleiben" -ForegroundColor Gray
         Write-Host "         ALLE Connector-Pods 'Pending'. Im Zweifel Flag wieder auf false setzen." -ForegroundColor Gray
@@ -278,6 +298,11 @@ spec:
 # Security: Passwoerter werden verdeckt eingelesen und NIE im Klartext ausgegeben.
 
 Write-Step "Login-Credentials konfigurieren"
+
+# abctl schreibt Hinweise (Org-Lookup etc.) auf stderr; unter $ErrorActionPreference='Stop'
+# wuerden diese via 2>&1 / *> das Skript abbrechen. Fuer den gesamten Credentials-Block daher
+# 'Continue' setzen - Erfolg/Fehlschlag wird ohnehin ueber $LASTEXITCODE ausgewertet.
+$prevEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 
 # Aktuelle Login-E-Mail ermitteln - nur die E-Mail auslesen, das Passwort NICHT anzeigen.
 $currentCreds = (& $ABCTL_EXE local credentials 2>&1 | Out-String)
@@ -315,6 +340,7 @@ if ((Read-Host "  Eigenes Passwort setzen? (j/N)") -in @("j","J","y","Y")) {
 } else {
     Write-Warn "Generiertes Passwort beibehalten."
 }
+$ErrorActionPreference = $prevEAP
 
 # Login-Hinweis OHNE Passwort-Klartext.
 Write-Host ""
