@@ -240,8 +240,12 @@ spec:
     $pvcOk = ($LASTEXITCODE -eq 0)
 
     # lokales Volume fuer die Connector-Pods aktivieren
+    # Patch ueber stdin statt '-p <json>': PowerShell verschluckt beim Aufruf der
+    # nativen docker.exe die inneren " des JSON-Strings, sodass kubectl ungueltiges
+    # JSON ({data:...} statt {"data":...}) erhaelt -> "invalid character 'd'".
+    # Der Weg ueber die Pipe (wie beim 'apply -f -' oben) umgeht das Quoting komplett.
     $patch = '{"data":{"JOB_KUBE_LOCAL_VOLUME_ENABLED":"true"}}'
-    docker exec $KIND_NODE kubectl --kubeconfig $KUBE_CFG patch configmap airbyte-abctl-airbyte-env -n $ABCTL_NS --type merge -p $patch 2>&1 | Out-Null
+    $patch | docker exec -i $KIND_NODE kubectl --kubeconfig $KUBE_CFG patch configmap airbyte-abctl-airbyte-env -n $ABCTL_NS --type merge --patch-file /dev/stdin 2>&1 | Out-Null
     $flagOk = ($LASTEXITCODE -eq 0)
 
     if ($pvcOk -and $flagOk) {
