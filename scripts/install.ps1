@@ -159,7 +159,11 @@ $elapsed    = 0
 while ($elapsed -lt $maxWaitSec) {
     $allHealthy = $true
     foreach ($svc in $services) {
-        $status = (docker inspect --format "{{.State.Health.Status}}" $svc 2>$null).Trim()
+        # Stringify-Subexpression "$(...)": existiert der Container (noch) nicht, liefert
+        # docker inspect KEINE Zeile -> Ergebnis "" statt $null. Ohne diese Klammerung
+        # wuerfe .Trim() auf einem $null-Wert eine terminierende Exception und das Skript
+        # crashte mitten in der Warteschleife.
+        $status = "$(docker inspect --format '{{.State.Health.Status}}' $svc 2>$null)".Trim()
         if ($status -ne "healthy") {
             $allHealthy = $false
         }
