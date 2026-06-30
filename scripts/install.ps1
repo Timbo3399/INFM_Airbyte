@@ -61,7 +61,7 @@ Assert-Command "git"    "Installieren: https://git-scm.com/download/win"
 Assert-Command "docker" "Installieren: https://www.docker.com/products/docker-desktop/"
 
 # Docker laeuft?
-docker info 2>&1 | Out-Null
+docker info 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Write-Fail "Docker Desktop ist nicht gestartet."
     Write-Host "         Bitte Docker Desktop starten und erneut versuchen." -ForegroundColor Gray
@@ -70,7 +70,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Ok "Docker Desktop laeuft."
 
 # Docker Compose verfuegbar?
-$composeVersion = docker compose version 2>&1
+$composeVersion = docker compose version 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Fail "docker compose nicht verfuegbar."
     Write-Host "         Docker Desktop auf Version >=4.x aktualisieren." -ForegroundColor Gray
@@ -85,7 +85,7 @@ Write-Ok "docker compose verfuegbar ($($composeVersion -replace 'Docker Compose 
 $pythonCmd = $null
 foreach ($candidate in @("py", "python", "python3")) {
     if (-not (Get-Command $candidate -ErrorAction SilentlyContinue)) { continue }
-    try { $verOut = (& $candidate --version 2>&1) | Out-String } catch { continue }
+    try { $verOut = (& $candidate --version 2>$null) | Out-String } catch { continue }
     if ($verOut -match "Python\s+3") {
         $pythonCmd = $candidate
         Write-Ok "Python gefunden ($($verOut.Trim()), via '$candidate')."
@@ -192,12 +192,12 @@ Write-Step "Testdaten laden (fm_rna, hso_personal, fm_inst, fm_gebaeude, k_plz, 
 if ($pythonCmd) {
     # Host-Python vorhanden: psycopg2-binary + openpyxl sicherstellen und Loader direkt ausfuehren.
     # openpyxl wird von load_fm_stamm.py (rooms.xltx) benoetigt.
-    & $pythonCmd -m pip show psycopg2-binary 2>&1 | Out-Null
+    & $pythonCmd -m pip show psycopg2-binary 2>$null | Out-Null
     if ($LASTEXITCODE -ne 0) {
         Write-Host "    Installiere psycopg2-binary..." -ForegroundColor DarkGray
         & $pythonCmd -m pip install psycopg2-binary --quiet
     }
-    & $pythonCmd -m pip show openpyxl 2>&1 | Out-Null
+    & $pythonCmd -m pip show openpyxl 2>$null | Out-Null
     if ($LASTEXITCODE -ne 0) {
         Write-Host "    Installiere openpyxl..." -ForegroundColor DarkGray
         & $pythonCmd -m pip install openpyxl --quiet
