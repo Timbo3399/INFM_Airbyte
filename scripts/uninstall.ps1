@@ -57,7 +57,7 @@ if (-not $Force) {
 }
 
 # Docker verfuegbar?
-docker info 2>&1 | Out-Null
+docker info 2>$null | Out-Null
 $dockerUp = ($LASTEXITCODE -eq 0)
 if (-not $dockerUp) {
     Write-Warn "Docker Desktop laeuft nicht - Container/Volumes koennen nicht entfernt werden."
@@ -104,7 +104,7 @@ if (-not $KeepData -and $dockerUp) {
     Write-Step "Volume oss_local_root entfernen"
     $volExists = docker volume ls --format "{{.Name}}" 2>$null | Where-Object { $_ -eq "oss_local_root" }
     if ($volExists) {
-        docker volume rm oss_local_root 2>&1 | Out-Null
+        docker volume rm oss_local_root 2>$null | Out-Null
         if ($LASTEXITCODE -eq 0) {
             Write-Ok "oss_local_root geloescht."
         } else {
