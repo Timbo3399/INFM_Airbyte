@@ -33,6 +33,18 @@ Ein Airbyte-Sync läuft in festen Phasen ab:
 6. **State / Checkpoint** — Bei Incremental wird der Fortschritt (z. B. höchster
    `updatedAt`-Wert) gespeichert, auch zwischendurch.
 
+**Lesen findet außerdem parallel zum Schreiben statt**
+
+Airbyte fügt außerdem weitere Airbyte_Metadaten in das Ziel ein bzw. updatet sie:
+_airbyte_raw_id, _airbyte_extracted_at und _airbyte_meta, _airbyte_generation_id
+
+> ⚠️ Problem: csv-Import --> Source-DB --> Dest-DB
+> schlägt fehl, da Airbyte dann versucht seine Metadaten erneut einzufügen!
+> Daher sollte direkt ohne Umwege ins Ziel kopiert werden.
+> Problem: durch den fehlenden Cursor stehen nur noch die Full refresh Sync-Methoden zur Auswahl
+> Alternative: SQL-View erstellen ohne die Metadaten, dann in Airbyte diese virtuelle Tabelle wählen
+
+
 ### Wird immer alles gesynct?
 Hängt vom **Sync-Modus** ab:
 
@@ -186,24 +198,48 @@ Definition haben.
 ## Performance pro Sync-Strategie:
 
 Zur Evaluation der Full Refresh-Strategien wurde ein Stream mit den Tabellen fm_gebaeude (25 Datensätze) und k_plz (34.172 Datensätze) mit einer Gesamtgröße von 5.331.779 Bytes (~5,33 MB) angelegt.
-Für die Incremental-Strategien wird zwingend ein Cursor-Feld benötigt, bei dem neuere Datensätze einen fortlaufend höheren Wert aufweisen. Hierfür wurde die Tabelle hso_personal (870 Datensätze, ~0,28 MB) mit der Spalte updated_at als Cursor gewählt. Dies ermöglichte realistische Simulationsdurchläufe mit minimalen Änderungen, um den Overhead von Airbyte bei kleinen Datenmengen darzustellen
+Für die Incremental-Strategien wird zwingend ein Cursor-Feld benötigt, bei dem neuere Datensätze einen fortlaufend höheren Wert aufweisen. Hierfür wurde zusätzlich ein Datensatz mit 100.000 records (~6,65 MB) erstellt und die Spalte updated_at als Cursor gewählt, um die beiden Hauptstrategien (Full refresh und Incremental) noch besser vergleichen zu können. Dies ermöglichte realistische Simulationsdurchläufe mit minimalen Änderungen, um den Overhead von Airbyte bei kleinen Datenmengen darzustellen.
+
+Alle Daten werden von Source PostgreSQL nach Destination PostgreSQL gesynct.
+
+Timebetween steht dabei für **meanSecondsBetweenStateMessageEmittedandCommitted**, was der durchschnittlichen Latenz im Puffer entspricht.
 
 | Sync mode | Datenmenge | Gesamtdauer Stream (Replication) | Destination Write Time | Source Read Time | TimeBetween | Durchsatz-Geschwindigkeit | Gesamtdauer (bis in UI sichtbar)|
 |---|---|---|---|---|---|---|---|
 | Full refresh/Overwrite | ~34.200 (5,33 MB) | 36,36 s | 36,18 s | 25,1 s | 11 s | 0,14 MB/s | 104 s |
 | Full refresh/Append | ~34.200 (5,33 MB) | 48,88 s| 48,4 s | 36,0 s | 17 s | 0,11 MB/s |96 s |
 | Full refresh/Overwrite + Deduped | ~34.200 (5,33 MB) | 40,93 s | 29,07 s | 40,57 s | 16 s| 0,13 MB/s| 68 s|
-| Incremental/Append + Deduped | ~13 (4.01 kB) | 31,26 s | 30,83 s | 20,24 s| 10 s | 0,00013 MB/s | 105 s|
-| Incremental/Append | ~13 (4.01 kB) | 28,96 s |  28,66 s | 17,97 s | 10 s | 0,00014 MB/s | 57 s |
+| Incremental/Append + Deduped | 75.000 (~5,11 MB) | 82,47s | 82,08s | 40,23s | 16 s | 0,06176 MB/s | 82,66s |
+| Incremental/Append | 75.000 (~5,11 MB) | 39,67s | 27,96s  | 39,47s | 11s | 0,12818 MB/s | 39,83s |
+| Full refresh/Overwrite | 100.000 (~6,65 MB) | 38,08 s | 25,66 s | 37,70 s  | 12s | 0,175 MB/s | 38,24 s |
 
-(**Todo: weitere Teststrategien für Incremental bei mehreren tausend Datensätzen!**)
 
 ![Performance Sync-Modes](../pictures/15-performance.png)
+
+
+| Sync mode | Datenmenge | Gesamtdauer Stream (Replication) | Source Read Time  | Destination Write Time| TimeBetween | Durchsatz-Geschwindigkeit | Gesamtdauer (bis in UI sichtbar)|
+|---|---|---|---|---|---|---|---|
+| Full refresh/Overwrite | 100.000 (~6,65 MB) | 38,08 s | 25,66 s | 37,70 s  | 12s | 175 KB/s | 38,24 s |
+| Incremental/Append | 10 (~0,61 kB) | 27,42 s | 16,62 s  | 27,17 s | 10s |  0,022 KB/s| 27,56s |
+| Incremental/Append | 100 (~6,23 kB)|  27,20 s | 16,57 s  | 26,93 s | 10 s  | 0,228 KB/s| 27,35 s |
+| Incremental/Append | 1.000 (~64,24 kB) | 27,30 s | 16,70 s  | 27,07s  | 10 s | 2,34 KB/s | 27,46 s |
+| Incremental/Append | 10.000 (~661,90 kB) | 30,60s | 19,67s  | 30,34s  | 10s | 21,52 KB/s | 30,76s |
+| Incremental/Append | 20.000 (~1.345,50 kB) | 32,41s  | 21,48s  | 32,15s | 10s | 41,300 KB/s | 32,58s  |
+| Incremental/Append | 50.000 (~3.396,28 kB) | 49,53s | 35,70s  | 47,57s  | 10s | 68,380 KB/s  | 49,67s |
+| Incremental/Append | 75.000 (~5.105,26 kB) | 39,67s | 27,96s  | 39,47s | 11s | 128,180 KB/s | 39,83s |
+| Incremental/Append | 100.000 (~6.814,25 kB) | 39,42s |  26,80s | 39,13s  | 10s | 172,08 KB/s | 39,60s |
+
+Ein Incremental, bei dem alles geändert wurde, entspricht einem Full refresh
+
+![Performance Full refresh vs. Incremental](../pictures/16_Incrementalvergleich.png)
+
 
 Die Messreihen verdeutlichen, dass Airbyte, unabhängig vom Datenvolumen, einen erheblichen initialen Overhead aufweist.
 Die Gesamtlaufzeit wird stark von diesem Overhead dominiert. In der Folge erweisen sich Incremental-Strategien bei sehr kleinen Datenmengen als relativ ineffizient: Selbst wenn nur 13 Datensätze übertragen werden, beträgt die reine Stream-Dauer (Replikationszeit) fast 30 Sekunden, was die Gesamtdauer künstlich verlängert.
 Bei größeren, sich regelmäßig änderenden Datensätzen ist die Incremental Strategie jedoch sinnvoll, um das Netzerk vor Überlastung zu schützen und die Performance insgesamt zu erhöhen.
 Die Strategie: **Incremental/Append** weißt insgesamt die geringste Streamdauer (Replication) und geringste Gesamtdauer insgesamt auf.
+Außerdem ist nicht nur die Größe entscheidend, sondern auch die Anzahl der Spalten einer Tabelle, denn bei einer größeren Anzahl
+an Spalten und nahezu äquivalenter Größe dauert der Stream insgesamt dennoch länger.
 
 
 ---
