@@ -46,6 +46,7 @@ KUBE_CFG="/etc/kubernetes/admin.conf"      # kubeconfig im kind-Node
 
 cyan "Airbyte lokal installieren (nicht interaktiv, 5-10 Min.)"
 install_args=(local install)
+install_args+=(--host localhost)
 printf "  Wenig RAM (unter 6 GB frei)? Low-Resource-Mode? (j/N) "
 read -r lowres || lowres=""
 case "$lowres" in
