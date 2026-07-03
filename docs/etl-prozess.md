@@ -87,6 +87,8 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 **Connections → + New Connection** → Source `HSO Source PostgreSQL`, Destination `HSO Dest PostgreSQL`.
 Airbyte führt automatisch eine **Schema-Discovery** aus (zeigt die 7 Streams).
 
+<em>Das Schema wird nicht automatisch aktualisiert, es wird aber erkannt, wenn sich etwas geändert hat</em>.
+
 - Streams auswählen: für den ersten Lauf **`fm_gebaeude`** (25 Zeilen) und **`k_plz`** (~34.000) — klein + groß.
 - **Sync mode pro Stream auf `Full refresh | Overwrite` stellen.**
   > ⚠️ „Replicate Source" setzt die Streams automatisch auf **Incremental | Append + Deduped**.
