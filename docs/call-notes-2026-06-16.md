@@ -216,11 +216,31 @@ Timebetween steht dabei für **meanSecondsBetweenStateMessageEmittedandCommitted
 
 ![Performance Sync-Modes](../pictures/15-performance.png)
 
+
+| Sync mode | Datenmenge | Gesamtdauer Stream (Replication) | Source Read Time  | Destination Write Time| TimeBetween | Durchsatz-Geschwindigkeit | Gesamtdauer (bis in UI sichtbar)|
+|---|---|---|---|---|---|---|---|
+| Full refresh/Overwrite | 100.000 (~6,65 MB) | 38,08 s | 25,66 s | 37,70 s  | 12s | 175 KB/s | 38,24 s |
+| Incremental/Append | 10 (~0,61 kB) | 27,42 s | 16,62 s  | 27,17 s | 10s |  0,022 KB/s| 27,56s |
+| Incremental/Append | 100 (~6,23 kB)|  27,20 s | 16,57 s  | 26,93 s | 10 s  | 0,228 KB/s| 27,35 s |
+| Incremental/Append | 1.000 (~64,24 kB) | 27,30 s | 16,70 s  | 27,07s  | 10 s | 2,34 KB/s | 27,46 s |
+| Incremental/Append | 10.000 (~661,90 kB) | 30,60s | 19,67s  | 30,34s  | 10s | 21,52 KB/s | 30,76s |
+| Incremental/Append | 20.000 (~1.345,50 kB) | 32,41s  | 21,48s  | 32,15s | 10s | 41,300 KB/s | 32,58s  |
+| Incremental/Append | 50.000 (~3.396,28 kB) | 49,53s | 35,70s  | 47,57s  | 10s | 68,380 KB/s  | 49,67s |
+| Incremental/Append | 75.000 (~5.105,26 kB) | 39,67s | 27,96s  | 39,47s | 11s | 128,180 KB/s | 39,83s |
+| Incremental/Append | 100.000 (~6.814,25 kB) | 39,42s |  26,80s | 39,13s  | 10s | 172,08 KB/s | 39,60s |
+
+Ein Incremental, bei dem alles geändert wurde, entspricht einem Full refresh
+
+![Performance Full refresh vs. Incremental](../pictures/16_Incrementalvergleich.png)
+
+
 Die Messreihen verdeutlichen, dass Airbyte, unabhängig vom Datenvolumen, einen erheblichen initialen Overhead aufweist.
 Die Gesamtlaufzeit wird stark von diesem Overhead dominiert. In der Folge erweisen sich Incremental-Strategien bei sehr kleinen Datenmengen als relativ ineffizient: Selbst wenn nur 13 Datensätze übertragen werden, beträgt die reine Stream-Dauer (Replikationszeit) fast 30 Sekunden, was die Gesamtdauer künstlich verlängert.
 Außerdem fällt auf, dass die Gesamtdauer der Streams von 10-20.000 geänderten Datensätzen nahezu stagniert. (ca. 30 Sekunden).
 Bei größeren, sich regelmäßig änderenden Datensätzen ist die Incremental Strategie jedoch sinnvoll, um das Netzerk vor Überlastung zu schützen und die Performance insgesamt zu erhöhen.
 Die Strategie: **Incremental/Append** weißt insgesamt die geringste Streamdauer (Replication) und geringste Gesamtdauer insgesamt auf.
+Außerdem ist nicht nur die Größe entscheidend, sondern auch die Anzahl der Spalten einer Tabelle, denn bei einer größeren Anzahl
+an Spalten und nahezu äquivalenter Größe dauert der Stream insgesamt dennoch länger.
 
 
 (TODO: Auswahl der Sync-Modes pro (realer) Tabelle)
