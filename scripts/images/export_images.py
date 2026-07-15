@@ -13,7 +13,10 @@ DB = dict(
     password=os.getenv("SOURCE_PG_PASSWORD", "sourcepassword"),
 )
 
-OUTPUT_DIR = "data/images"
+# Ausgabeverzeichnis an der Repo-Wurzel verankern (scripts/images/ -> .. -> ..), damit der
+# Export unabhaengig vom aktuellen Arbeitsverzeichnis immer nach <repo>/data/images schreibt.
+BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+OUTPUT_DIR = os.path.join(BASE, "data", "images")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 conn = psycopg2.connect(**DB)
