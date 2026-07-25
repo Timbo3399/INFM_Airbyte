@@ -1,14 +1,17 @@
 """
 load_hso_students.py - Laedt hso_students.csv in source-postgres.
 
-Hintergrund (Betreuer-Feedback 09.06.2026): Die CSV ist "roh wie beim Export"
-und liess sich per direktem PostgreSQL-COPY nicht laden. Eine fruehere Diagnose
-nahm an, die Datenzeilen haetten mehr Spalten als der Header (40). Tatsaechlich
-ist die Datei pipe-getrennt und das Feld `stg_key` ist ein **gequotetes** Feld,
-das selbst Pipes enthaelt (z. B. "84|LH|-|-|H|20221|2|P|V|1|"). Ein
-quote-bewusster CSV-Parser (delimiter='|', quotechar='"') rekonstruiert daher
-alle 5052 Datenzeilen sauber zu exakt 40 Feldern -> die Datei IST ladbar, ganz
-ohne haendische Korrektur.
+Die Datei ist pipe-getrennt, und das Feld stg_key ist gequotet und enthaelt
+selbst Pipes (z. B. "84|LH|-|-|H|20221|2|P|V|1|"). Ein naiver Split an '|'
+liefert deshalb mehr Felder als der Header mit seinen 40 Spalten vorgibt, und
+ein direktes PostgreSQL-COPY scheitert daran. Ein quote-bewusster CSV-Parser
+(delimiter='|', quotechar='"') rekonstruiert alle 5052 Datenzeilen sauber zu
+exakt 40 Feldern. Die Datei ist damit vollstaendig ladbar, ohne haendische
+Korrektur.
+
+Der Betreuer bestaetigte am 09.06.2026, dass die Daten "roh wie beim Export"
+vorliegen und wir uns selbst eine Alternative suchen und diese dokumentieren
+sollen.
 
 Damit steht hso_students auch in der relationalen Source-DB zur Verfuegung
 (nicht nur ueber den File-Connector) und entsperrt Szenario 4 (Account-Mapping)
