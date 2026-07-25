@@ -144,36 +144,6 @@ Definition haben.
 
 ## 4. Monitoring
 
-### Logs
-- **Sync-Logs:** 
-    - Airbyte-UI → Connection → **Job History** → Sync anklicken → Logs
-  (gelesene/geschriebene Zeilen, Fehler, Dauer).
-    - Airbyte-UI → Connections → entsprechende Connection anklicken -> Timeline -> auf das Punktemenü rechts neben dem entsprechenden Event klicken -> View Logs (kann auch als .txt Datei gedownloadet werden)
-        - Im Header: Attempt wählbar (wenn fehlgeschlagen), Timestamp, Anzahl extracted/geladener records, Job id, Dauer in Sekunden
-        - wenn Warning/Fail: Kurzbeschreibung: zum Beispiel: "Failure in source: Checking source connection failed - please review this connection's configuration to prevent future syncs from failing"
-        - bietet Suchfunktion, filterbar nach sources (replication-orchestrator, source, destination, platform) und filterbar nach Log levels (info, warn, error, debug, trace)
-        - Logfile: enthält weitere nützliche Informationen (zum Beispiel detailliertes Sync summary)
-          
-          Hier ein beispielhafter Auszug eines erfolgreichen Syncs:
-
-          ```json
-          {
-            "status" : "completed",
-            "recordsSynced" : 1245,
-            "bytesSynced" : 363574,
-            "startTime" : 1781532526967,
-            "endTime" : 1781532557644,
-            "totalStats" : {
-              "recordsEmitted" : 1245,
-              "recordsCommitted" : 1245
-              (...)
- 
-            },
-            "streamStats" : [ {
-              "streamName" : "fm_stamm"
-            } ]
-          }
-    - Logs über die Airbyte API auszulesen ist aktuell noch nicht möglich (ggf. noch Umwege prüfen)
 
 - **Plattform-Logs:** `kubectl logs -n airbyte-abctl <pod>` (`kubectl get pods -n airbyte-abctl`).
   `ToDo:` echten Namespace-Namen prüfen (`kubectl get namespaces`), `airbyte-abctl` ist nicht sicher.
