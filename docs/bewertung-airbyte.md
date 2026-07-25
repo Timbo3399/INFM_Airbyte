@@ -72,6 +72,27 @@ vorgeschaltetes Skript, das nach PostgreSQL schreibt. Beides ist Zusatzaufwand.
 **Kein XML.** Der File-Connector deckt CSV, JSON, Excel, Parquet und Feather ab, aber
 kein XML (A3). Für SOAP-Antworten und XML-Dateien braucht es Vorverarbeitung.
 
+**BLOBs gehen still verloren.** Das ist unser deutlichster Einzelbefund. Beim Sync von
+1.100 Bildern aus einer PostgreSQL-BYTEA-Spalte nach MySQL meldet Airbyte Erfolg,
+überträgt 16,5 MB und legt 1.100 Zeilen im Ziel an. Die Bildspalte ist danach in allen
+1.100 Zeilen leer. Die Rohtabelle enthält die Daten noch, verloren gehen sie erst beim
+Aufbau der Zieltabelle, und die Zielspalte ist `TEXT` statt eines Binärtyps.
+`_airbyte_meta` verzeichnet dabei keinen einzigen verworfenen Wert.
+
+Für die Bewertung ist weniger der fehlende BLOB-Support das Problem als die Art des
+Scheiterns. Ein Job, der abbricht, fällt auf. Ein Job, der mit korrekter Zeilenzahl
+Erfolg meldet und dabei den Inhalt fallen lässt, fällt erst auf, wenn jemand in die
+Spalte schaut. Wer Airbyte für Binärdaten einsetzen will, braucht eigene Prüfungen im
+Ziel, nicht nur die Job-Historie.
+
+**Cursor-Syncs übersehen geänderte Logik.** Ein Incremental-Sync über einen Zeitstempel
+bemerkt nur, was den Zeitstempel anfasst. Als wir die Ableitungslogik einer View
+änderten und damit den Inhalt aller 5.922 Zeilen, übertrug der nächste Sync genau eine
+Zeile. Kein Fehler, keine Warnung, im Ziel standen weiter die alten Werte. Nach jeder
+Änderung an Mappings oder Views braucht es deshalb bewusst einen Full Refresh oder ein
+Anfassen der Cursor-Spalte. Bei Talend, wo die Transformation im Job steckt, stellt sich
+diese Frage nicht.
+
 **Keine Daten-API.** Airbyte stellt selbst keine REST-Schnittstelle auf die Zieldaten
 bereit (A6). Wir haben das mit PostgREST als zusätzlichem Dienst gelöst. Das
 funktioniert, ist aber eine weitere Komponente im Betrieb.

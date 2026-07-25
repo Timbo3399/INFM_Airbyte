@@ -142,10 +142,52 @@ python scripts/images/export_images.py
 Schreibt die BLOBs als `<ext_id>.png` nach `data/images/`. Der Dateiname folgt der Aufgabenstellung;
 picsum liefert JPEG-Daten, die Endung sagt also nichts über das Format aus.
 
-**Airbyte-Evaluation:** Kann Airbyte BLOB-Felder synchronisieren?
-- Source: `source-postgres` Tabelle `hso_images`
-- Destination: `dest-mysql`
-- Beobachten: Wie werden BYTEA-Felder in MySQL gemappt?
+### Ergebnis des Durchlaufs
+
+`load_images.py` hat 1.100 Bilder geholt, keines übersprungen, zusammen 8.015 kB in
+`hso_images`. `export_images.py` hat daraus 1.100 Dateien geschrieben, und alle 1.100
+sind byteweise identisch mit dem Inhalt der Datenbank. Der Weg Datei nach BYTEA nach
+Datei verliert also nichts.
+
+### Airbyte-Evaluation: BYTEA nach MySQL
+
+Sync `hso_images` von `source-postgres` nach `dest-mysql`, Full Refresh, über
+`python scripts/airbyte_run_sync.py "HSO Bilder nach MySQL"`.
+
+Der Job meldet Erfolg: 1.100 Zeilen, 16.508.628 Bytes übertragen, Dauer PT1M. In der
+Zieltabelle stehen 1.100 Zeilen. Trotzdem ist **kein einziges Bild angekommen**:
+
+```sql
+SELECT COUNT(*), COUNT(data) FROM hso_images;   -- 1100, 0
+```
+
+| Spalte | Typ in MySQL | Werte |
+|---|---|---|
+| `image_id` | bigint | 1.100 |
+| `ext_id` | text | 1.100 |
+| `data` | **text** (max 65.535) | **0**, alles NULL |
+
+Was dabei auffällt:
+
+**Die Rohdaten sind da.** In `destdb_raw__stream_hso_images` steht das Bild als
+Hex-String, beginnend mit `\xffd8ffe1`, also der JPEG-Signatur. Die Rohsätze sind
+zwischen 3.927 und 35.647 Bytes groß und liegen damit alle deutlich unter der
+TEXT-Grenze. Verloren geht das Bild erst im Typisierungsschritt, der aus der Rohtabelle
+die Zieltabelle baut.
+
+**Die Zielspalte ist TEXT, nicht BLOB.** Airbyte bildet BYTEA nicht auf einen
+Binärtyp ab. Ein Bild in einer TEXT-Spalte wäre ohnehin nur als Hex oder Base64
+speicherbar, hier bleibt die Spalte gleich ganz leer.
+
+**Airbyte meldet nichts.** `_airbyte_meta` enthält `{"changes": []}`, also keinen
+Hinweis auf verworfene Werte. Der Sync gilt als erfolgreich, die Zeilenzahl stimmt,
+und nur ein Blick in die Spalte zeigt den Verlust. Wer nach dem Sync die Zeilen zählt,
+merkt nichts.
+
+**Konsequenz für Szenario 3:** Der Bildtransport funktioniert mit den Python-Skripten,
+nicht mit Airbyte. Für BLOBs bräuchte es einen anderen Weg, etwa die Bilder im
+Dateisystem oder Objektspeicher zu halten und über Airbyte nur Pfade und Metadaten zu
+synchronisieren.
 
 ---
 
@@ -287,6 +329,34 @@ Lauf mitmessen, bevor er aus einer einzelnen Messung Schlüsse zieht.
 drei erfolgreichen Syncs 11.845 Zeilen (5.922 + 5.922 + 1), die Zieltabelle dagegen
 konstant 5.922. Die Deduplizierung passiert also erst beim Aufbau der finalen Tabelle,
 der Rohbestand bleibt vollständig liegen und braucht auf Dauer eine Aufräumstrategie.
+
+### Bildverknüpfung
+
+Der zweite Teil von Szenario 5 verknüpft `user_id` mit den Bildern aus Szenario 3. Die
+Testbilder haben keinen inhaltlichen Bezug zu Personen, die Zuordnung ist also
+willkürlich, aber deterministisch: ein Hash der `user_id` modulo Bildanzahl. Dieselbe
+Person bekommt bei jedem Lauf dasselbe Bild. Im Ziel haben alle 5.922 Zeilen ein
+`image_id`, verteilt auf 1.095 der 1.100 Bilder.
+
+Dabei ist uns eine Falle aufgefallen, die es wert ist, festgehalten zu werden.
+
+**Eine geänderte View-Definition sieht der Cursor nicht.** Nach dem Umbau der View
+hatten alle 5.922 Zeilen einen neuen Wert in `image_id`. Der nächste Incremental-Sync
+übertrug trotzdem genau eine Zeile, und im Ziel hatte danach genau eine Zeile ein Bild.
+Der Grund ist simpel: `updatedat` hatte sich nicht geändert, und der Cursor schaut nur
+dorthin. Inhaltlich hatte sich alles geändert, für Airbyte aber nichts.
+
+Das trifft jede Änderung an der Ableitungslogik, nicht nur diese: neue Spalte, andere
+Berechnung, korrigiertes Mapping. Wer das übersieht, hat im Ziel wochenlang alte Werte
+stehen, ohne dass ein Sync fehlschlägt. Abhilfe war hier ein Anfassen des Cursors:
+
+```sql
+UPDATE hso_students SET updatedat = NOW() WHERE user_id IS NOT NULL;
+UPDATE hso_personal SET updatedat = NOW() WHERE COALESCE(user_id,'') <> '';
+```
+
+Danach lief der Sync über alle 5.922 Zeilen (1.104.531 Bytes, PT33S) und die
+Verknüpfung stand im Ziel. Alternativ hätte ein einmaliger Full Refresh gereicht.
 
 ### Der Primärschlüssel steht nur auf dem Papier
 
