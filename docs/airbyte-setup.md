@@ -127,11 +127,11 @@ abctl local credentials --password MeinNeuesPasswort123
 
 > **Kuerzer geht es per Skript.** Die Abschnitte 5 und 6 beschreiben den Weg durch die UI.
 > Dieselben Sources und Destinations legt
-> [`scripts/airbyte_setup_objects.py`](../scripts/airbyte_setup_objects.py) ueber die
+> [`scripts/airbyte/setup_objects.py`](../scripts/airbyte/setup_objects.py) ueber die
 > Public API an, idempotent und ohne Klicken:
 >
 > ```powershell
-> python scripts/airbyte_setup_objects.py
+> python scripts/airbyte/setup_objects.py
 > ```
 >
 > Das lohnt sich vor allem nach einem `abctl local uninstall`, weil die

@@ -118,9 +118,9 @@ Wir haben den ersten Weg genommen. Der Ablauf hat drei Schritte, und Airbyte ist
 zweien davon beteiligt:
 
 ```powershell
-python scripts/airbyte_run_sync.py "HSO FM nach PG"              # 1. roh ins Ziel
+python scripts/airbyte/run_sync.py "HSO FM nach PG"              # 1. roh ins Ziel
 python -m dbt.cli.main run --project-dir dbt --profiles-dir dbt  # 2. transformieren
-python scripts/airbyte_run_sync.py "HSO fm_raeume nach MySQL"    # 3. weiterreichen
+python scripts/airbyte/run_sync.py "HSO fm_raeume nach MySQL"    # 3. weiterreichen
 ```
 
 Schritt 1 bringt `fm_stamm`, `fm_gebaeude` und `fm_inst` unverändert nach
@@ -200,7 +200,7 @@ Datei verliert also nichts.
 ### Airbyte-Evaluation: BYTEA nach MySQL
 
 Sync `hso_images` von `source-postgres` nach `dest-mysql`, Full Refresh, über
-`python scripts/airbyte_run_sync.py "HSO Bilder nach MySQL"`.
+`python scripts/airbyte/run_sync.py "HSO Bilder nach MySQL"`.
 
 Der Job meldet Erfolg: 1.100 Zeilen, 16.508.628 Bytes übertragen, Dauer PT1M. In der
 Zieltabelle stehen 1.100 Zeilen. Trotzdem ist **kein einziges Bild angekommen**:
@@ -331,7 +331,7 @@ WHERE user_id = 'abauer';
 ```
 
 ```powershell
-python scripts/airbyte_run_sync.py "HSO IdM hso_user nach MySQL"
+python scripts/airbyte/run_sync.py "HSO IdM hso_user nach MySQL"
 ```
 
 ### Aufbau
@@ -343,8 +343,8 @@ wie eine normale Tabelle.
 
 ```powershell
 python scripts/mapping/create_hso_user_view.py     # View anlegen (5.922 Zeilen)
-python scripts/airbyte_setup_objects.py            # Sources + Destinations
-python scripts/airbyte_setup_connections.py        # Connections inkl. IdM
+python scripts/airbyte/setup_objects.py            # Sources + Destinations
+python scripts/airbyte/setup_connections.py        # Connections inkl. IdM
 ```
 
 ### Ergebnis

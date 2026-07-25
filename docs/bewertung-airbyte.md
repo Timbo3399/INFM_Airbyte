@@ -40,7 +40,7 @@ und Connections, liegt im kind-Cluster und ist nach `abctl local uninstall` verl
 Uns ist das einmal passiert, und alle sieben Objekte mussten von Hand neu angelegt
 werden. Airbyte bringt dafür keine Export- oder Backup-Funktion mit.
 
-Lösbar ist es über die Public API: [`scripts/airbyte_setup_objects.py`](../scripts/airbyte_setup_objects.py)
+Lösbar ist es über die Public API: [`scripts/airbyte/setup_objects.py`](../scripts/airbyte/setup_objects.py)
 legt die Objekte idempotent an, siehe [airbyte_api.md](airbyte_api.md#4-objekte-per-skript-anlegen).
 Für einen Produktivbetrieb heißt das aber: die Airbyte-Konfiguration gehört als Code
 versioniert, per API-Skript oder über den Terraform-Provider. Wer sich auf die UI
