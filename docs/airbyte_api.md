@@ -97,12 +97,12 @@ Auf diese Weise lässt sich auch Automatisierung umsetzen.
 
 ## 4. Objekte per Skript anlegen
 
-Genau das macht [`scripts/airbyte_setup_objects.py`](../scripts/airbyte_setup_objects.py):
+Genau das macht [`scripts/airbyte/setup_objects.py`](../scripts/airbyte/setup_objects.py):
 es legt die fünf Sources und zwei Destinations über die API an, statt sie in der UI
 zusammenzuklicken.
 
 ```powershell
-python scripts/airbyte_setup_objects.py
+python scripts/airbyte/setup_objects.py
 ```
 
 Der Anlass war ein Datenverlust. Die Airbyte-Konfiguration liegt im kind-Cluster und
@@ -181,7 +181,7 @@ POST /api/v1/sources/discover_schema   {"sourceId": "...", "disable_cache": true
 ```
 
 Danach waren es 12 Streams inklusive `hso_images`, und die Connection ließ sich anlegen.
-[`scripts/airbyte_setup_connections.py`](../scripts/airbyte_setup_connections.py) ruft
+[`scripts/airbyte/setup_connections.py`](../scripts/airbyte/setup_connections.py) ruft
 das vor dem Anlegen automatisch auf.
 
 ### Was das Skript nicht kann

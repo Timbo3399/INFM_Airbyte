@@ -12,6 +12,14 @@
 #      load_fm_inst, load_fm_gebaeude, load_k_plz, load_lookups, load_hso_students,
 #      load_fm_stamm - Host-Python ODER Docker-Fallback)
 #   8. Verbindungsinfos ausgeben
+#
+# Die Entscheidung zwischen Host-Python und Docker-Fallback trifft dieses Skript
+# nach derselben Regel wie install.sh: Host-Python nur, wenn psycopg2 UND
+# openpyxl danach importierbar sind. Die beiden Helfer Find-Python und
+# Confirm-PyPackage haben in install.sh ein wortgleiches Gegenstueck.
+#
+# Danach fehlen noch zwei Schritte bis zum Demo-Zustand: setup-airbyte.ps1 und
+# setup-szenarien.ps1 (siehe docs/installation-guide.md).
 
 $ErrorActionPreference = "Stop"
 # Exit-Codes nativer Befehle (docker, python, pip) selbst auswerten, statt dass
@@ -46,6 +54,36 @@ function Assert-Command([string]$cmd, [string]$hint) {
     Write-Ok "$cmd gefunden."
 }
 
+# Sucht ein echtes Python 3. Gleiche Logik wie in install.sh: die Versionsausgabe
+# pruefen, nicht nur ob der Befehl existiert. "python" ist auf Windows haeufig
+# nur der Microsoft-Store-Platzhalter, den Get-Command zwar findet, der aber
+# keine echte Version liefert.
+function Find-Python {
+    foreach ($kandidat in @("py", "python", "python3")) {
+        if (-not (Get-Command $kandidat -ErrorAction SilentlyContinue)) { continue }
+        try { $ver = (& $kandidat --version 2>$null) | Out-String } catch { continue }
+        if ($ver -match "Python\s+3") { return $kandidat }
+    }
+    return $null
+}
+
+# Stellt ein Python-Paket sicher: erst importieren, sonst nachinstallieren, auf
+# PEP-668-Systemen mit --break-system-packages, danach erneut importieren.
+# Gleiche Logik wie in install.sh, damit beide Skripte dieselbe Entscheidung
+# treffen. Der Import ist der Pruefpunkt, nicht 'pip show': ein Paket kann
+# installiert und trotzdem nicht importierbar sein.
+function Confirm-PyPackage([string]$py, [string]$modul, [string]$paket) {
+    & $py -c "import $modul" 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { return $true }
+    Write-Host "    Installiere $paket..." -ForegroundColor DarkGray
+    & $py -m pip install --quiet $paket 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        & $py -m pip install --quiet --break-system-packages $paket 2>$null | Out-Null
+    }
+    & $py -c "import $modul" 2>$null | Out-Null
+    return ($LASTEXITCODE -eq 0)
+}
+
 # --- Banner ------------------------------------------------------------------
 
 Write-Host ""
@@ -78,21 +116,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Ok "docker compose verfuegbar ($($composeVersion -replace 'Docker Compose version ',''))."
 
-# Python (optional - JSON-Daten koennen sonst via Docker geladen werden).
-# Achtung: "python" ist auf Windows haeufig nur der Microsoft-Store-Platzhalter, den
-# Get-Command zwar findet, der aber keine echte Version liefert. Daher die echte
-# Versionsausgabe pruefen und py/python/python3 der Reihe nach testen.
-$pythonCmd = $null
-foreach ($candidate in @("py", "python", "python3")) {
-    if (-not (Get-Command $candidate -ErrorAction SilentlyContinue)) { continue }
-    try { $verOut = (& $candidate --version 2>$null) | Out-String } catch { continue }
-    if ($verOut -match "Python\s+3") {
-        $pythonCmd = $candidate
-        Write-Ok "Python gefunden ($($verOut.Trim()), via '$candidate')."
-        break
-    }
-}
-if (-not $pythonCmd) {
+# Python ist optional: ohne laedt der Docker-Fallback die Testdaten.
+$pythonCmd = Find-Python
+if ($pythonCmd) {
+    Write-Ok "Python gefunden (via '$pythonCmd')."
+} else {
     Write-Warn "Kein echtes Python gefunden (evtl. nur Microsoft-Store-Platzhalter)."
     Write-Warn "JSON-Daten werden stattdessen ueber einen Docker-Container geladen (kein Python noetig)."
     Write-Warn "Optional installieren: winget install Python.Python.3.12  (oder https://www.python.org/downloads/)"
@@ -189,32 +217,35 @@ if ($elapsed -ge $maxWaitSec) {
 
 Write-Step "Testdaten laden (fm_rna, hso_personal, fm_inst, fm_gebaeude, k_plz, anredetitel, k_hochschule, k_res, hso_students, fm_stamm)"
 
+# Entscheidung ueber den Ladeweg, identisch zu install.sh: Host-Python nur dann,
+# wenn psycopg2 UND openpyxl danach wirklich importierbar sind. psycopg2 braucht
+# jeder Loader, openpyxl nur load_fm_stamm.py (rooms.xltx). Klappt eines von
+# beiden nicht, uebernimmt der Docker-Fallback komplett, statt sieben Loader
+# einzeln scheitern zu lassen.
+$hostWegOk = $false
 if ($pythonCmd) {
-    # Host-Python vorhanden: psycopg2-binary + openpyxl sicherstellen und Loader direkt ausfuehren.
-    # openpyxl wird von load_fm_stamm.py (rooms.xltx) benoetigt.
-    & $pythonCmd -m pip show psycopg2-binary 2>$null | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "    Installiere psycopg2-binary..." -ForegroundColor DarkGray
-        & $pythonCmd -m pip install psycopg2-binary --quiet
-    }
-    & $pythonCmd -m pip show openpyxl 2>$null | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "    Installiere openpyxl..." -ForegroundColor DarkGray
-        & $pythonCmd -m pip install openpyxl --quiet
-    }
+    $psycopgOk = Confirm-PyPackage $pythonCmd "psycopg2" "psycopg2-binary"
+    $openpyxlOk = Confirm-PyPackage $pythonCmd "openpyxl" "openpyxl"
+    if (-not $psycopgOk)  { Write-Warn "psycopg2 nicht verfuegbar." }
+    if (-not $openpyxlOk) { Write-Warn "openpyxl nicht verfuegbar." }
+    $hostWegOk = $psycopgOk -and $openpyxlOk
+}
+
+if ($hostWegOk) {
     $loadOk = $true
     foreach ($loader in @("load_json.py", "load_fm_inst.py", "load_fm_gebaeude.py", "load_k_plz.py", "load_lookups.py", "load_hso_students.py", "load_fm_stamm.py")) {
         & $pythonCmd "$ROOT\scripts\$loader"
         if ($LASTEXITCODE -ne 0) { $loadOk = $false }
     }
     if ($loadOk) {
-        Write-Ok "Testdaten erfolgreich geladen."
+        Write-Ok "Testdaten erfolgreich geladen (Host-Python)."
     } else {
         Write-Warn "Laden (teilweise) fehlgeschlagen - Loader manuell ausfuehren: scripts\load_*.py"
     }
 } else {
-    # Kein Host-Python: Loader in einem Wegwerf-Container ausfuehren. Verbindet sich ueber
-    # das Docker-Netz airbyte_net direkt mit hso_source_postgres:5432.
+    # Kein brauchbares Host-Python: Loader in einem Wegwerf-Container ausfuehren.
+    # Verbindet sich ueber das Docker-Netz airbyte_net direkt mit
+    # hso_source_postgres:5432.
     Write-Host "    Lade Daten ueber python:3.12-slim Container (kein Host-Python noetig)..." -ForegroundColor DarkGray
     docker run --rm --network airbyte_net `
         --env-file "$ROOT\.env" `
@@ -243,10 +274,14 @@ Write-Host "  Airbyte File Connector:" -ForegroundColor Cyan
 Write-Host "    HTTP:  http://host.docker.internal:8888/<datei>.csv" -ForegroundColor White
 Write-Host "    Local: /local/<datei>.csv  (nach oss_local_root-Copy oben)" -ForegroundColor White
 Write-Host ""
-Write-Host "  Naechster Schritt: Airbyte starten" -ForegroundColor Cyan
-Write-Host "    .\scripts\setup-airbyte.ps1" -ForegroundColor White
+Write-Host "  Noch zwei Schritte bis zum Demo-Zustand:" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Oder direkt zum Installations-Guide:" -ForegroundColor Cyan
-Write-Host "    docs\installation-guide.md" -ForegroundColor White
+Write-Host "    2) .\scripts\setup-airbyte.ps1      Airbyte installieren (interaktiv)" -ForegroundColor White
+Write-Host "    3) .\scripts\setup-szenarien.ps1    Mapping, Bilder, Syncs, dbt" -ForegroundColor White
+Write-Host ""
+Write-Host "  Danach steht der Zustand, den docs\ergebnisse.md beschreibt. Nachpruefen:" -ForegroundColor Gray
+Write-Host "    python scripts\pruefe_szenarien.py" -ForegroundColor White
+Write-Host ""
+Write-Host "  Der komplette Weg steht in docs\installation-guide.md" -ForegroundColor Cyan
 Write-Host "  ===================================================" -ForegroundColor DarkGray
 Write-Host ""

@@ -5,8 +5,13 @@ Fuehrt sql/source/views/hso_user.sql aus. Die View fasst hso_students und
 hso_personal zu einer gemeinsamen IdM-Sicht zusammen, weil Airbyte selbst keine
 zwei Streams in eine Zieltabelle vereinigen kann.
 
-Voraussetzung: fill_random_names.py und generate_accounts.py sind gelaufen,
-sonst ist die View leer (sie filtert auf gesetzte user_id).
+Voraussetzungen, beide zwingend vorher:
+  * fill_random_names.py und generate_accounts.py, sonst ist die View leer
+    (sie filtert auf gesetzte user_id)
+  * scripts/images/load_images.py, denn die View liest hso_images fuer die
+    Bildzuordnung. CREATE OR REPLACE VIEW prueft die referenzierten Tabellen
+    sofort, ein fehlendes hso_images bricht hier ab mit
+    'relation "hso_images" does not exist'.
 
 Aufruf:
     python scripts/mapping/create_hso_user_view.py

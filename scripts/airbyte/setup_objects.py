@@ -1,5 +1,5 @@
 """
-airbyte_setup_objects.py - legt Sources und Destinations ueber die Airbyte
+setup_objects.py - legt Sources und Destinations ueber die Airbyte
 Public API an, statt sie in der UI zusammenzuklicken.
 
 Hintergrund: Der Datenbank-Stack ist per Skript reproduzierbar, die
@@ -10,18 +10,25 @@ sie wieder her.
 Das Skript ist idempotent: Objekte werden am Namen erkannt und nicht doppelt
 angelegt. Ein zweiter Lauf meldet nur, was schon da ist.
 
-Credentials werden in dieser Reihenfolge gesucht:
+Credentials werden in dieser Reihenfolge probiert:
   1. Prozess-Umgebung (AIRBYTE_CLIENT_ID / AIRBYTE_CLIENT_SECRET)
   2. .env im Projektstamm
   3. `abctl local credentials`
 
-Stolperstein bei 3: abctl faerbt seine Ausgabe ein und schreibt dabei rund 80
-ANSI-Escape-Sequenzen mitten in die Werte. Wer die nicht entfernt, schickt acht
-Zeichen Steuercode mit und bekommt vom Token-Endpunkt nur ein wenig hilfreiches
-"Invalid client id or token".
+Probiert, nicht nur gesucht: lehnt Airbyte eine Quelle ab, kommt die naechste
+dran. Das braucht es nach einem Neuaufbau. `abctl local install` vergibt neue
+Client-Credentials, in der .env stehen dann noch die alten, und weil die .env
+Vorrang hat, waeren sie ohne Fallback die einzige Chance. Die Antwort lautet
+dann "Invalid client id or token", was nach einem Tippfehler aussieht und nicht
+nach veralteten Werten.
+
+Derselbe Stolperstein aus einer anderen Richtung bei 3: abctl faerbt seine
+Ausgabe ein und schreibt dabei rund 80 ANSI-Escape-Sequenzen mitten in die
+Werte. Wer die nicht entfernt, schickt acht Zeichen Steuercode mit und bekommt
+denselben wenig hilfreichen Satz zurueck.
 
 Aufruf:
-    python scripts/airbyte_setup_objects.py
+    python scripts/airbyte/setup_objects.py
 """
 
 import json
@@ -84,6 +91,67 @@ def resolve_credentials(prozess_env: dict, datei_env: dict, abctl_text):
         if cid and csec:
             return cid, csec
     return None, None
+
+
+def credential_kandidaten(prozess_env: dict, datei_env: dict, abctl_text):
+    """[(Quellenname, client_id, client_secret)] in der Reihenfolge des Vorrangs.
+
+    Anders als resolve_credentials liefert das ALLE brauchbaren Quellen, nicht
+    nur die erste. Denn die erste kann veraltet sein: nach einem
+    'abctl local uninstall' plus Neuinstallation vergibt Airbyte neue
+    Credentials, und in der .env stehen dann noch die alten. Wer nur die erste
+    Quelle probiert, bekommt "Invalid client id or token" und sucht den Fehler
+    beim Tippen statt beim Alter der Werte.
+
+    Unvollstaendige Paare (Id ohne Secret) fallen raus.
+    """
+    kandidaten = []
+    for quelle, werte in (("Umgebung", prozess_env), (".env", datei_env)):
+        cid = (werte or {}).get("AIRBYTE_CLIENT_ID")
+        csec = (werte or {}).get("AIRBYTE_CLIENT_SECRET")
+        if cid and csec:
+            kandidaten.append((quelle, cid, csec))
+    if abctl_text:
+        cid, csec = parse_abctl_credentials(abctl_text)
+        if cid and csec:
+            kandidaten.append(("abctl local credentials", cid, csec))
+    return kandidaten
+
+
+def kurzer_grund(fehler) -> str:
+    """Kernaussage einer abgelehnten Token-Anfrage.
+
+    Die API antwortet mit verschachteltem JSON, in dem der eigentliche Grund
+    ("Invalid client id or token") zwischen Huellen steckt. Fuer eine
+    Konsolenzeile reicht der Grund.
+    """
+    text = str(fehler)
+    innen = re.findall(r'"message"\s*:\s*"([^"]+)"', text)
+    if innen:
+        return innen[-1]
+    return text if len(text) < 80 else text[:77] + "..."
+
+
+def erste_funktionierende(kandidaten, baue):
+    """Ergebnis von baue(cid, csec) fuer den ersten Kandidaten, der durchkommt.
+
+    Lehnt Airbyte einen Kandidaten ab, kommt der naechste dran. Kommt keiner
+    durch, wird der letzte Fehler weitergegeben, denn der beschreibt den
+    aussichtsreichsten Versuch.
+    """
+    letzter = None
+    for quelle, cid, csec in kandidaten:
+        try:
+            return baue(cid, csec)
+        except SystemExit as e:
+            print(f"    Credentials aus {quelle} abgelehnt: {e}")
+            letzter = e
+    if letzter is not None:
+        raise letzter
+    raise SystemExit(
+        "Keine API-Credentials gefunden. AIRBYTE_CLIENT_ID und"
+        " AIRBYTE_CLIENT_SECRET in .env eintragen (siehe .env.example)"
+        " oder abctl verfuegbar machen.")
 
 
 def find_by_name(items, name: str, id_key: str):
@@ -217,6 +285,9 @@ class AirbyteApi:
         zwischengespeicherten Stand. Deshalb hier die interne Config-API mit
         disable_cache. Schlaegt der Aufruf fehl, machen wir weiter: fuer
         unveraenderte Quellen reicht der Cache.
+
+        None bedeutet "nicht gelesen", eine leere Liste "gelesen, nichts drin".
+        Eine noch leere Ziel-Datenbank ist naemlich kein Fehler.
         """
         wurzel = self.base.rsplit("/api/", 1)[0]
         try:
@@ -224,11 +295,11 @@ class AirbyteApi:
                               headers=self._headers, timeout=TIMEOUT * 5,
                               json={"sourceId": source_id, "disable_cache": True})
             if r.status_code != 200:
-                return []
+                return None
             return [s["stream"]["name"]
                     for s in r.json().get("catalog", {}).get("streams", [])]
         except requests.RequestException:
-            return []
+            return None
 
     def workspace_id(self) -> str:
         ws = self.liste("workspaces")
@@ -291,23 +362,37 @@ def abctl_credentials_text():
     return None
 
 
+def api_verbinden(wurzel: str) -> AirbyteApi:
+    """Verbundene AirbyteApi, notfalls ueber mehrere Credential-Quellen.
+
+    Wird von setup_connections.py und run_sync.py mitbenutzt,
+    damit alle drei Skripte dieselbe Reihenfolge und denselben Fallback haben.
+    abctl wird nur befragt, wenn Umgebung und .env nicht durchkommen: der
+    Aufruf startet einen Prozess und kostet Sekunden.
+    """
+    datei_env = read_env_file(os.path.join(wurzel, ".env"))
+    print(f"Verbinde mit Airbyte ({API_URL})...")
+
+    def baue(cid, csec):
+        return AirbyteApi(API_URL, cid, csec)
+
+    # abctl bleibt bis zuletzt aussen vor: der Aufruf startet einen Prozess.
+    for quelle, cid, csec in credential_kandidaten(dict(os.environ), datei_env, None):
+        try:
+            return baue(cid, csec)
+        except SystemExit as e:
+            print(f"    Credentials aus {quelle} abgelehnt: {kurzer_grund(e)}")
+
+    print("    Frage abctl nach aktuellen Werten...")
+    return erste_funktionierende(
+        credential_kandidaten({}, {}, abctl_credentials_text()), baue)
+
+
 def main():
     wurzel = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     datei_env = read_env_file(os.path.join(wurzel, ".env"))
 
-    client_id, client_secret = resolve_credentials(dict(os.environ), datei_env, None)
-    if not client_id:
-        print("Keine Credentials in Umgebung oder .env, frage abctl...")
-        client_id, client_secret = resolve_credentials(
-            {}, {}, abctl_credentials_text())
-    if not client_id:
-        raise SystemExit(
-            "Keine API-Credentials gefunden. AIRBYTE_CLIENT_ID und"
-            " AIRBYTE_CLIENT_SECRET in .env eintragen (siehe .env.example)"
-            " oder abctl verfuegbar machen.")
-
-    print(f"Verbinde mit Airbyte ({API_URL})...")
-    api = AirbyteApi(API_URL, client_id, client_secret)
+    api = api_verbinden(wurzel)
     ws = api.workspace_id()
     print(f"    Workspace {ws}")
 

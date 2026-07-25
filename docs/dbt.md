@@ -73,7 +73,7 @@ Voraussetzung ist ein Lauf der Connection `HSO FM nach PG`, sonst fehlen die
 Quelltabellen:
 
 ```powershell
-python scripts/airbyte_run_sync.py "HSO FM nach PG"
+python scripts/airbyte/run_sync.py "HSO FM nach PG"
 ```
 
 ---

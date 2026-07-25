@@ -1,5 +1,5 @@
-"""Tests fuer die reinen Funktionen in scripts/airbyte_run_sync.py."""
-import airbyte_run_sync as r
+"""Tests fuer die reinen Funktionen in scripts/airbyte/run_sync.py."""
+import run_sync as r
 
 
 def test_laufende_jobs_sind_nicht_fertig():
