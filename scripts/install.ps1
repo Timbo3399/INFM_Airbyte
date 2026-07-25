@@ -142,7 +142,7 @@ Write-Step "Datenbank-Stack starten"
 docker compose up -d
 if ($LASTEXITCODE -ne 0) {
     Write-Fail "docker compose up fehlgeschlagen."
-    Write-Host "         Tipp: Sind die Ports 5432, 5433 oder 3306 schon belegt?" -ForegroundColor Gray
+    Write-Host "         Tipp: Sind die Ports 5433, 5434, 3306, 8888 oder 3000 schon belegt?" -ForegroundColor Gray
     exit 1
 }
 Write-Ok "Container gestartet."
@@ -185,7 +185,7 @@ if ($elapsed -ge $maxWaitSec) {
     }
 }
 
-# --- 7. JSON-Daten in source-postgres laden ----------------------------------
+# --- 7. Testdaten in source-postgres laden -----------------------------------
 
 Write-Step "Testdaten laden (fm_rna, hso_personal, fm_inst, fm_gebaeude, k_plz, anredetitel, k_hochschule, k_res, hso_students, fm_stamm)"
 

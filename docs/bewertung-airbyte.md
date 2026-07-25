@@ -32,8 +32,9 @@ Performance-Messungen überhaupt erst möglich gemacht hat. Benachrichtigung üb
 ist in der self-hosted Variante vorhanden.
 
 **Inkrementelle Syncs.** Cursor-basiertes Incremental funktioniert zuverlässig und
-braucht keine zusätzliche WAL-Konfiguration. Von den gemessenen Strategien hat
-Incremental/Append die kürzeste Replikationsdauer.
+braucht keine zusätzliche WAL-Konfiguration. Es spart Laufzeit, weil weniger Daten bewegt
+werden. Schneller pro Datensatz ist es nicht: bei gleichen 100.000 Sätzen liegen
+Full Refresh (38,08 s) und Incremental/Append (39,42 s) gleichauf.
 
 ---
 
@@ -78,6 +79,10 @@ ein Sync knapp eine halbe Minute. Bis rund 20.000 geänderten Sätzen bleibt die
 Gesamtdauer nahezu gleich. Für häufige Syncs kleiner Deltas ist das ineffizient, und
 Intervalle unter 15 Minuten gibt es ohnehin erst in den Paid-Tiers.
 
+**Deduplizierung kostet spürbar.** Bei 75.000 Datensätzen braucht Incremental/Append
+39,67 s, derselbe Lauf mit Deduped 82,47 s. Wer wie in Szenario 5 einen Primärschlüssel
+sauber halten muss, zahlt dafür etwa das Doppelte an Laufzeit.
+
 ---
 
 ## 3. Aufwand
@@ -90,7 +95,7 @@ Intervalle unter 15 Minuten gibt es ohnehin erst in den Paid-Tiers.
 | Einarbeitung in die Betriebsform | **hoch und unterschätzt.** Airbyte Community läuft über `abctl` in einem kind-Kubernetes-Cluster. Für die Fehlersuche sind `kubectl`-Kenntnisse nötig |
 | Undokumentierte Hürden | wir haben vier Stolperfallen gefunden und gelöst, die in der offiziellen Doku nicht stehen. Ohne Kubernetes-Verständnis ist keine davon auffindbar, weil die UI nur „Pending" anzeigt |
 | Connections einrichten | gering pro Tabelle, UI-geführt. Sync-Modus und Cursor müssen bewusst gewählt werden |
-| Datenaufbereitung | **der größte Posten.** Für unsere fünf Quelltabellen waren sieben eigene Loader nötig |
+| Datenaufbereitung | **der größte Posten.** Für unsere zehn Quelltabellen waren sieben eigene Loader nötig |
 
 ### Laufender Betrieb
 
