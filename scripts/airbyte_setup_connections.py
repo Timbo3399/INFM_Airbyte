@@ -84,6 +84,18 @@ def gewuenschte_connections(src: dict, dst: dict) -> dict:
         "HSO Bilder nach MySQL": (
             src["HSO Source PostgreSQL"], dst["HSO Dest MySQL"],
             [stream("hso_images", FULL_REFRESH)]),
+        # Szenario 2: die drei FM-Rohtabellen ins Ziel bringen. Dort baut dbt
+        # daraus fm_raeume. Genau die Arbeitsteilung, die ELT ausmacht:
+        # Airbyte transportiert roh, transformiert wird in der Ziel-DB.
+        "HSO FM nach PG": (
+            src["HSO Source PostgreSQL"], dst["HSO Dest PostgreSQL"],
+            [stream("fm_stamm", FULL_REFRESH),
+             stream("fm_gebaeude", FULL_REFRESH),
+             stream("fm_inst", FULL_REFRESH)]),
+        # Nach dem dbt-Lauf: das fertige Modell weiter nach MySQL.
+        "HSO fm_raeume nach MySQL": (
+            src["HSO Transform PostgreSQL"], dst["HSO Dest MySQL"],
+            [stream("fm_raeume", FULL_REFRESH)]),
     }
 
 
@@ -105,6 +117,7 @@ def main():
     src = {s["name"]: s["sourceId"] for s in api.liste("sources")}
     dst = {d["name"]: d["destinationId"] for d in api.liste("destinations")}
     fehlend = [n for n in ("HSO Source PostgreSQL", "HSO CSV hso_students",
+                           "HSO Transform PostgreSQL",
                            "HSO Dest PostgreSQL", "HSO Dest MySQL")
                if n not in src and n not in dst]
     if fehlend:

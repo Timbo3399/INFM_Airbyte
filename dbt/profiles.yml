@@ -1,0 +1,19 @@
+# Verbindung fuer dbt. Zeigt auf dest-postgres, also dorthin, wo Airbyte die
+# Rohdaten ablegt. Keine Passwoerter im Klartext: die Werte kommen aus der
+# Umgebung, mit denselben Standardwerten wie in .env.example.
+#
+# Aufruf mit:  dbt run --project-dir dbt --profiles-dir dbt
+
+hso_datahub:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DEST_PG_HOST', 'localhost') }}"
+      port: "{{ env_var('DEST_PG_PORT', '5434') | as_number }}"
+      user: "{{ env_var('DEST_PG_USER', 'destuser') }}"
+      password: "{{ env_var('DEST_PG_PASSWORD', 'destpassword') }}"
+      dbname: "{{ env_var('DEST_PG_DB', 'destdb') }}"
+      schema: public
+      threads: 4
+      connect_timeout: 30

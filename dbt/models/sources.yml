@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: airbyte
+    description: >
+      Rohtabellen, die Airbyte aus source-postgres nach dest-postgres bringt
+      (Connection "HSO FM nach PG", Full Refresh | Overwrite). Airbyte
+      transformiert dabei nichts, das passiert erst in den Modellen hier.
+    schema: public
+    tables:
+      - name: fm_stamm
+        description: Raumstammdaten, 1.244 Zeilen (ETL-Mapping aus rooms.xltx)
+      - name: fm_gebaeude
+        description: Gebaeude der Hochschule, 25 Zeilen
+      - name: fm_inst
+        description: Institute und Organisationseinheiten, 2.083 Zeilen

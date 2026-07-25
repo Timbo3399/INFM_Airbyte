@@ -41,3 +41,9 @@ config.yaml
 airbyte-env-fixed.yaml
 worker-deployment.yaml
 data/images/
+
+# dbt-Artefakte (kompilierte Modelle, Logs, Pakete)
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+.user.yml
