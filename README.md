@@ -181,6 +181,8 @@ INFM_Airbyte/
     ├── load_hso_students.py            ← lädt hso_students (quote-bewusster Pipe-Parser)
     ├── load_fm_stamm.py                ← lädt fm_stamm aus rooms.xltx (ETL-Mapping)
     ├── airbyte_setup_objects.py        ← legt Sources/Destinations per Public API an
+    ├── airbyte_setup_connections.py    ← legt die Connections per Public API an
+    ├── airbyte_run_sync.py             ← startet einen Sync und wartet auf das Ergebnis
     ├── mapping/                        ← Szenario 4: fill_random_names.py (Namen befüllen)
     │                                     + generate_accounts.py (Account-Generator)
     └── images/                         ← Szenario 3: BLOB-Im-/Export
