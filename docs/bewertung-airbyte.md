@@ -12,6 +12,20 @@ zu den Sync-Strategien ([call-notes-2026-06-16.md](call-notes-2026-06-16.md)).
 
 ## 1. Wo Airbyte überzeugt
 
+**Wofür Airbyte an der Hochschule passt.** Die folgenden Abschnitte benennen viele
+Einschränkungen, deshalb vorab der Zuschnitt, für den das Werkzeug in unserer
+Evaluation durchgehend getragen hat: **Replikation zwischen Datenbanken** und
+**dateibasierte Quellen**. Dieselben Daten parallel nach PostgreSQL und MySQL
+spiegeln, eine Tabelle aus einem Vorsystem regelmäßig ins Data Warehouse nachziehen,
+eine CSV oder Excel-Datei aus einem Fachbereich einsammeln: dafür reicht eine
+Connection, die in der UI in wenigen Minuten steht, und man bekommt Scheduling,
+Retry-Logik, Job-Historie und Logs ohne eigenen Code dazu. Szenario 1 hat genau das
+gezeigt, inklusive einer CSV, an der der `COPY`-Befehl gescheitert war und die der
+File-Connector klaglos gelesen hat. Für diesen Anteil des bestehenden Talend-Bestands
+ist Airbyte nicht nur brauchbar, sondern der einfachere Weg, weil die
+Eigenbau-Skripte für Job-Ausführung und Logging entfallen. Die Einschränkungen unten
+betreffen den anderen Anteil: Transformationslogik, Binärdaten und exotische Quellen.
+
 **Kostenmodell.** Die self-hosted Edition Core ist kostenlos und ohne Volumengrenze.
 Alle 600+ Connectoren sind enthalten, auch Change Data Capture und Schema-Propagation.
 Bezahlt wird nur für Managed Hosting und Komfort, nicht für Funktionalität. Für eine

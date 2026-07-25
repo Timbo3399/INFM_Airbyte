@@ -1,5 +1,12 @@
 # Call-Notizen und Themensammlung, 16.06.2026
 
+> **Arbeitsnotizen, kein fertiges Dokument.** Diese Datei ist eine Themensammlung aus
+> einem Call. Sie enthält offene `ToDo:`-Marker und ungeprüfte Punkte (siehe auch
+> Abschnitt 7) und ist deshalb nicht als Ergebnisdarstellung gedacht. Belastbar sind
+> die Messreihen in Abschnitt 4 und die Editionsübersicht in Abschnitt 6; beides ist
+> in [ergebnisse.md](ergebnisse.md) und [bewertung-airbyte.md](bewertung-airbyte.md)
+> übernommen. Wer den Stand der Evaluation sucht, liest dort weiter.
+
 Mitschriften aus dem Call, ausformuliert und thematisch geordnet. Bezieht sich auf
 das lokale Airbyte-Setup (`abctl`/kind, Source-PostgreSQL → Ziel-PostgreSQL & MySQL,
 Python-Loader für die Source-Befüllung). Siehe auch [architektur.md](architektur.md)
