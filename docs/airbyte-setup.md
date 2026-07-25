@@ -76,7 +76,7 @@ abctl local install --volume "/c/<repo>/sql/source/data:/local"
 Bei wenig RAM (unter 6 GB frei) zusaetzlich `--low-resource-mode`.
 
 Der Befehl laeuft **selbststaendig** (nicht interaktiv) und dauert **5-10 Minuten**
-(Container-Downloads). Ohne `--volume` funktioniert der File-Connector (`local`) nicht —
+(Container-Downloads). Ohne `--volume` funktioniert der File-Connector (`local`) nicht,
 und der Mount greift **nur bei der Cluster-Erstellung** (Details + Volume-Aktivierung:
 Abschnitt 7).
 
@@ -119,7 +119,7 @@ abctl local credentials --password MeinNeuesPasswort123
 > `unable to determine organization email: … invalid character '<'`.
 > Getrennt (erst `--email`, dann `--password`) funktioniert es zuverlaessig. Ist die
 > E-Mail bereits gesetzt, genuegt Schritt 2. Das Setup-Skript macht beides automatisch.
-> (`abctl local credentials` zeigt das Passwort im Klartext — daher nur bei Bedarf nutzen.)
+> (`abctl local credentials` zeigt das Passwort im Klartext, daher nur bei Bedarf nutzen.)
 
 ---
 
@@ -157,7 +157,7 @@ In der Airbyte UI: **Sources** -> **New Source** -> **Postgres**
 > Der Postgres-Source-Connector bietet drei Update-Methoden
 > ([offizielle Doku](https://docs.airbyte.com/integrations/sources/postgres)):
 > - **CDC** (logische Replikation): braucht `wal_level = logical`, `max_wal_senders ≥ 1`,
->   einen Replication Slot (pgoutput) + Publication je Tabelle — in unserer Test-Umgebung
+>   einen Replication Slot (pgoutput) + Publication je Tabelle. In unserer Test-Umgebung
 >   nicht konfiguriert.
 > - **Xmin** (cursorlos): keine DB-Konfiguration nötig, **aber** unterstützt keine
 >   non-materialized Views und ist anfällig bei Transaction-ID-Wraparound (hohe Schreiblast).
@@ -178,7 +178,7 @@ Nach erfolgreichem Setup sind folgende Streams verfuegbar:
 | `fm_inst` | Institute / Org-Einheiten (~2.080 Zeilen) |
 | `fm_stamm` | Raumstammdaten (Tabelle vorhanden, aktuell ohne Daten) |
 | `k_plz` | PLZ-Verzeichnis (~34.000 Zeilen) |
-| `hso_students` | ⚠️ Stream vorhanden, aber leer (0 Zeilen, CSV defekt) – Studierendendaten via File-Connector (Abschnitt 7) |
+| `hso_students` | 5.052 Zeilen. Die CSV ist pipe-getrennt mit Pipes in einem gequoteten Feld und wird von [`load_hso_students.py`](../scripts/load_hso_students.py) geladen; zusätzlich über den File-Connector verfügbar (Abschnitt 7) |
 | `fm_rna` | Raumnutzungsarten (~380 Zeilen) |
 | `hso_personal` | Personal anonymisiert (~870 Zeilen) |
 
@@ -221,7 +221,7 @@ Nach erfolgreichem Setup sind folgende Streams verfuegbar:
 > eine native PostgreSQL-Installation als Windows-Dienst (`postgres.exe`) auf diesem Port.
 > Da Docker Desktop seine Port-Mappings ueber denselben Host-Port legt, wuerde eine externe
 > Verbindung via `host.docker.internal:5432` an den nativen PostgreSQL-Dienst weitergeleitet
-> statt an unseren Container — Authentifizierung schlaegt dann fehl.
+> statt an unseren Container, die Authentifizierung schlaegt dann fehl.
 > Port **5434** umgeht diesen Konflikt zuverlaessig.
 
 ### Destination: MySQL
@@ -373,7 +373,7 @@ Alle CSV-Sources verwenden **Storage Provider: `local: Local Filesystem (limited
 > da `--volume` ausschliesslich bei der Cluster-Erstellung greift.
 
 > **Quellen (offizielle Airbyte-Doku):**
-> - File Source Connector — Provider *Local Filesystem* (nur Open Source); die URL muss
+> - File Source Connector, Provider *Local Filesystem* (nur Open Source); die URL muss
 >   mit `/local/` beginnen: <https://docs.airbyte.com/integrations/sources/file>
 > - `abctl local install --volume <HOST_PATH>:<GUEST_PATH>` (mehrfach setzbar):
 >   <https://docs.airbyte.com/platform/deploying-airbyte/abctl>
@@ -387,7 +387,7 @@ Alle CSV-Sources verwenden **Storage Provider: `local: Local Filesystem (limited
 
 1. **Connections** -> **New Connection**
 2. Source und Destination auswaehlen
-3. **Streams** auswaehlen (z. B. `fm_gebaeude`, `k_plz` — beide mit Daten gefuellt)
+3. **Streams** auswaehlen (z. B. `fm_gebaeude`, `k_plz`, beide mit Daten gefuellt)
 4. **Sync Mode** pro Stream waehlen (siehe Tabelle unten)
 5. **Save and sync now**
 
