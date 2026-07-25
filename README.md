@@ -16,6 +16,7 @@
 | [docs/testszenarien.md](docs/testszenarien.md) | Die 6 Evaluations-Szenarien |
 | [docs/anforderungen.md](docs/anforderungen.md) | Anforderungen & Umsetzungsstand (Kickoff + Szenarien) |
 | [docs/bewertung-airbyte.md](docs/bewertung-airbyte.md) | Abschluss-Bewertung: Vor-/Nachteile, Aufwand, Empfehlung, Ausblick |
+| [docs/dbt.md](docs/dbt.md) | dbt als Transformationsschicht (Szenario 2), Aufbau und Aufwand |
 | [docs/zwischenbericht.md](docs/zwischenbericht.md) | Zwischenbericht (Abgabe 7.6.) |
 
 > Offizielle Airbyte-Doku: <https://docs.airbyte.com/> · [abctl (Deployment)](https://docs.airbyte.com/platform/deploying-airbyte/abctl) · [File Source Connector](https://docs.airbyte.com/integrations/sources/file)
@@ -59,7 +60,7 @@
 | # | Szenario | Kern-Feature |
 |---|----------|--------------|
 | 1 | Testdaten einspielen | DB-Connector, File-Connector |
-| 2 | Facility Management | Sync + Denormalisierung |
+| 2 | Facility Management | Sync + Denormalisierung (dbt) |
 | 3 | Bilder als BLOB | BYTEA-Handling, Python-Scripts |
 | 4 | Studenten/Personal Mapping | Account-Generator, dbt |
 | 5 | IdM System (Incremental Sync) | Incremental + Dedup |
@@ -160,6 +161,10 @@ INFM_Airbyte/
 │   ├── call-notes-2026-06-16.md ← Sync-Modi, Messreihen, Editionen
 │   ├── zwischenbericht.md      ← Zwischenbericht (Abgabe 7.6.)
 │   └── betreuer-feedback-2026-06-09.md  ← Betreuer-Feedback + unsere Reaktion
+│
+├── dbt/                        ← Transformationsschicht (Szenario 2)
+│   ├── dbt_project.yml · profiles.yml
+│   └── models/fm_raeume.sql    ← denormalisierte Raumtabelle + Tests
 │
 ├── tests/                      ← pytest für die reinen Loader-/Mapping-Funktionen
 │   └── conftest.py in der Wurzel macht scripts/ importierbar
