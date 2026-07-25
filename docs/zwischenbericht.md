@@ -15,7 +15,7 @@
 > und bleibt als Abgabe unverändert stehen. Zwei Punkte haben sich danach erledigt und sind
 > hier bewusst nicht rückwirkend eingearbeitet: `hso_students` gilt in Kap. 2.2, 4 und 5.2
 > noch als defekt und mit 0 Zeilen, wird inzwischen aber vollständig mit 5.052 Zeilen geladen;
-> `fm_stamm` ist mit 1.245 Zeilen befüllt. Kap. 6 enthält bereits die Antworten des Betreuers
+> `fm_stamm` ist mit 1.244 Zeilen befüllt. Kap. 6 enthält bereits die Antworten des Betreuers
 > vom 09.06.2026. Der aktuelle Stand steht in [anforderungen.md](anforderungen.md), die
 > abschließende Bewertung in [bewertung-airbyte.md](bewertung-airbyte.md).
 
@@ -164,7 +164,7 @@ Alle Lösungen sind in `scripts/setup-airbyte.ps1`/`.sh` automatisiert und in
 > Vollständiges Feedback samt unserer Reaktion: [betreuer-feedback-2026-06-09.md](betreuer-feedback-2026-06-09.md).
 
 1. **`hso_students.csv` Soll-Struktur?** Daten sind „roh wie beim Export", wir sollen eine eigene Alternative finden und dokumentieren. Gelöst per quote-bewusstem Loader ([`load_hso_students.py`](../scripts/load_hso_students.py), 5.052 Zeilen).
-2. **`fm_stamm` (Raumstammdaten):** Systemtabelle für Räume, selbst via ETL-Mapping aus `rooms.xltx` befüllen. Umgesetzt ([`load_fm_stamm.py`](../scripts/load_fm_stamm.py), 1.245 Zeilen).
+2. **`fm_stamm` (Raumstammdaten):** Systemtabelle für Räume, selbst via ETL-Mapping aus `rooms.xltx` befüllen. Umgesetzt ([`load_fm_stamm.py`](../scripts/load_fm_stamm.py), 1.244 von 1.245 Quellzeilen, eine PK-Dublette verworfen).
 3. **Zugang für Betreuer:** Live-System bei der Abschlusspräsentation genügt, Installation und First-Steps sollen gut dokumentiert sein. Doku vorhanden ([installation-guide.md](installation-guide.md), [etl-prozess.md](etl-prozess.md), [zugang.md](zugang.md)).
 4. **Sync-Strategie:** Cursor-Modus über Zeitstempel (`updatedat`) genügt. Methodenvergleich in [airbyte-setup.md §5](airbyte-setup.md); der Abschnitt zu Vor- und Nachteilen samt Aufwand ist inzwischen in [bewertung-airbyte.md](bewertung-airbyte.md) ergänzt.
 5. **Scope:** Herangehensweise und dokumentierte Lösungen zählen, nicht das vollständige Lösen aller sechs Szenarien. Zur Kenntnis genommen.

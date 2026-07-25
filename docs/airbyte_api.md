@@ -95,4 +95,54 @@ curl --request GET \
 
 Auf diese Weise lässt sich auch Automatisierung umsetzen.
 
+## 4. Objekte per Skript anlegen
+
+Genau das macht [`scripts/airbyte_setup_objects.py`](../scripts/airbyte_setup_objects.py):
+es legt die fünf Sources und zwei Destinations über die API an, statt sie in der UI
+zusammenzuklicken.
+
+```powershell
+python scripts/airbyte_setup_objects.py
+```
+
+Der Anlass war ein Datenverlust. Die Airbyte-Konfiguration liegt im kind-Cluster und
+überlebt weder `abctl local uninstall` noch das Löschen des Clusters. Der
+Datenbank-Stack ist seit Projektbeginn per Skript reproduzierbar, die Airbyte-Seite
+war es nicht: nach jedem Neuaufbau mussten alle Connectoren von Hand neu angelegt
+werden. Das Skript schließt diese Lücke.
+
+Es ist idempotent. Objekte werden am Namen erkannt, ein zweiter Lauf meldet nur, was
+schon vorhanden ist, und ändert nichts.
+
+Die Credentials sucht es der Reihe nach in der Prozessumgebung, in `.env` und zuletzt
+über `abctl local credentials`. Im Normalfall muss man also gar nichts konfigurieren.
+
+### Drei Stolpersteine
+
+**`abctl` färbt seine Ausgabe ein.** Wer Client-Id und Secret aus
+`abctl local credentials` herausparst, fängt sich ANSI-Escape-Sequenzen ein: in unserer
+Ausgabe 80 Stück. Die Werte sind damit acht Zeichen zu lang, und der Token-Endpunkt
+antwortet mit einem wenig hilfreichen `Invalid client id or token`, das nach falschen
+Zugangsdaten aussieht. Escape-Sequenzen vorher entfernen:
+
+```python
+ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+sauber = ANSI.sub("", ausgabe)
+```
+
+**`tunnel_method` ist Pflicht.** Alle Datenbank-Connectoren verlangen das Feld, auch
+wenn kein SSH-Tunnel im Spiel ist. Fehlt es, kommt HTTP 422 mit
+`required property 'tunnel_method' not found`. Richtig ist
+`{"tunnel_method": {"tunnel_method": "NO_TUNNEL"}}`.
+
+**`grant-type` ist egal.** Der Schreibweise oben (`grant-type` statt des
+OAuth-üblichen `grant_type`) muss man nicht nachgehen. Wir haben beide Varianten und
+das komplette Weglassen des Feldes getestet, alle drei liefern HTTP 200.
+
+### Was das Skript nicht kann
+
+Einen Verbindungstest. Die Public API stellt dafür keinen Endpunkt bereit, `POST
+/sources/<id>/check` antwortet mit 403. Ob ein Connector wirklich funktioniert, zeigt
+sich erst beim ersten Sync oder am grünen Haken in der UI.
+
 Die Airbyte-API Doku mit allen möglichen Requests: <https://reference.airbyte.com/reference/getting-started>

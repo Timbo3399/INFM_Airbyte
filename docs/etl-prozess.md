@@ -191,3 +191,22 @@ Für die Connection muss als Source dann der entsprechende File-Connector mit de
 ![Excel-File-Connector](../pictures/excel_file_connector.png)
 
 Nach dem erfolgreichen Sync ist fm_stamm mit *1.245* Daten befüllt.
+
+### Nebenbefund: der Primärschlüssel überlebt den Sync nicht
+
+Beide Wege in dieselbe Tabelle liefern unterschiedlich viele Zeilen:
+
+| Weg | Zeilen | Grund |
+|---|---|---|
+| [`load_fm_stamm.py`](../scripts/load_fm_stamm.py) | 1.244 | erzwingt den PK `(geb_nr, ges_nr, raumid)` und verwirft die Dublette `307/0/5` |
+| Airbyte File-Connector | 1.245 | schreibt alle Zeilen der Quelle |
+
+Das Sync-Log belegt es: `recordsCommitted: 1245` für den Stream `fm_stamm`
+(siehe [call-notes-2026-06-16.md](call-notes-2026-06-16.md), Abschnitt 4).
+`rooms.xltx` enthält 1.245 Datenzeilen, darunter genau eine Dublette.
+
+Die vom Airbyte-Destination-Connector angelegte Zieltabelle übernimmt den Primärschlüssel
+der Quelltabelle nicht. Eine Zeile, die beim direkten `INSERT` an der PK-Bedingung scheitern
+würde, landet über Airbyte also ohne Fehlermeldung im Ziel. Für Szenario 5 ist das relevant:
+dort trägt `hso_user.user_id` den Primärschlüssel, und die Eindeutigkeit hängt damit allein
+am Sync-Modus *Append + Deduped*, nicht an einer Constraint in der Datenbank.

@@ -49,8 +49,8 @@ falsch). Ein quote-bewusster Parser lädt alle **5.052 Zeilen** verlustfrei.
 > ETL-Mappings selbst versuchen, mit den Daten aus der `rooms.xml` zu befüllen.
 
 **Reaktion:** Umgesetzt. Quelle ist die Excel-Vorlage **`rooms.xltx`** (der Betreuer
-schrieb „rooms.xml"). Das ETL-Mapping befüllt `fm_stamm` mit **1.245 Zeilen**
-(1.244 + 1 übersprungene PK-Dublette).
+schrieb „rooms.xml"). Das ETL-Mapping befüllt `fm_stamm` mit **1.244 Zeilen**;
+die Quelle hat 1.245, eine davon ist eine PK-Dublette und wird verworfen.
 
 - Umsetzung: [`scripts/load_fm_stamm.py`](../scripts/load_fm_stamm.py) (liest
   `sql/source/data/rooms.xltx`), in die Installation eingebunden.

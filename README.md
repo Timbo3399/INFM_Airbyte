@@ -50,7 +50,7 @@
 | `hso_students` | Studierende (5.052). Die CSV galt zunächst als defekt, ist aber pipe-getrennt mit Pipes in einem gequoteten Feld und damit vollständig ladbar |
 | `fm_gebaeude` | Gebäude der Hochschule Offenburg (25) |
 | `fm_inst` | Institute und Organisationseinheiten (rund 2.080) |
-| `fm_stamm` | Raumstammdaten (1.245), über ETL-Mapping aus `rooms.xltx` |
+| `fm_stamm` | Raumstammdaten (1.244), über ETL-Mapping aus `rooms.xltx`. Die Quelle hat 1.245 Zeilen, eine davon ist eine PK-Dublette |
 | `k_plz` | PLZ-Verzeichnis Deutschland (34.172) |
 | `anredetitel`, `k_hochschule`, `k_res` | Schlüsseltabellen aus HISinOne |
 
@@ -180,6 +180,7 @@ INFM_Airbyte/
     ├── load_lookups.py                 ← lädt anredetitel, k_hochschule, k_res
     ├── load_hso_students.py            ← lädt hso_students (quote-bewusster Pipe-Parser)
     ├── load_fm_stamm.py                ← lädt fm_stamm aus rooms.xltx (ETL-Mapping)
+    ├── airbyte_setup_objects.py        ← legt Sources/Destinations per Public API an
     ├── mapping/                        ← Szenario 4: fill_random_names.py (Namen befüllen)
     │                                     + generate_accounts.py (Account-Generator)
     └── images/                         ← Szenario 3: BLOB-Im-/Export
