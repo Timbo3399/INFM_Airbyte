@@ -259,6 +259,9 @@ def gewuenschte_objekte(env: dict):
 
     sources = {
         "HSO Source PostgreSQL": source_postgres_config(DB_HOST, 5433, **src),
+        # Die Ziel-DB zusaetzlich als Quelle: dort baut dbt fm_raeume, und von
+        # dort muss die Tabelle weiter nach MySQL (Szenario 2, Teilaufgabe B).
+        "HSO Transform PostgreSQL": source_postgres_config(DB_HOST, 5434, **dst_pg),
         "HSO CSV hso_students": source_file_config(
             "/local/hso_students.csv", "hso_students", separator="|"),
         "HSO CSV k_plz": source_file_config("/local/k_plz.csv", "k_plz"),
