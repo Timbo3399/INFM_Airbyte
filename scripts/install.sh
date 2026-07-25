@@ -2,11 +2,22 @@
 # install.sh - Vollstaendiges Setup fuer Linux/macOS (Pendant zu scripts/install.ps1)
 # Aufruf:  bash scripts/install.sh
 #
-# 1. Voraussetzungen pruefen (git, docker, docker compose)
-# 2. .env aus .env.example erstellen
-# 3. Volume oss_local_root sicherstellen
-# 4. Images laden, Stack starten, auf healthy warten
-# 5. Testdaten laden (Host-python3 mit psycopg2 ODER Docker-Fallback)
+# Was dieses Skript tut:
+#   1. Voraussetzungen pruefen (git, docker, docker compose, Python)
+#   2. .env aus .env.example erstellen (wenn nicht vorhanden)
+#   3. oss_local_root Volume sicherstellen
+#   4. Docker-Images laden
+#   5. Datenbank-Stack starten
+#   6. Warten bis alle Container healthy sind
+#   7. Testdaten in source-postgres laden (tolerante Python-Loader: load_json,
+#      load_fm_inst, load_fm_gebaeude, load_k_plz, load_lookups, load_hso_students,
+#      load_fm_stamm - Host-Python ODER Docker-Fallback)
+#   8. Verbindungsinfos ausgeben
+#
+# Die Entscheidung zwischen Host-Python und Docker-Fallback trifft dieses Skript
+# nach derselben Regel wie install.ps1: Host-Python nur, wenn psycopg2 UND
+# openpyxl danach importierbar sind. Die beiden Helfer find_python und
+# confirm_py_package haben in install.ps1 ein wortgleiches Gegenstueck.
 
 set -euo pipefail
 
@@ -17,6 +28,35 @@ cyan() { printf '\n==> %s\n' "$1"; }
 ok()   { printf '    [OK] %s\n' "$1"; }
 warn() { printf '    [!]  %s\n' "$1"; }
 fail() { printf '    [X]  %s\n' "$1"; }
+
+# Sucht ein echtes Python 3. Gleiche Logik wie in install.ps1: die
+# Versionsausgabe pruefen, nicht nur ob der Befehl existiert (auf Windows ist
+# "python" oft nur der Microsoft-Store-Platzhalter).
+find_python() {
+  for kandidat in python3 python py; do
+    command -v "$kandidat" >/dev/null 2>&1 || continue
+    if "$kandidat" --version 2>&1 | grep -q "Python 3"; then
+      echo "$kandidat"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Stellt ein Python-Paket sicher: erst importieren, sonst nachinstallieren, auf
+# PEP-668-Systemen (neuere Debian/Ubuntu) mit --break-system-packages, danach
+# erneut importieren. Gleiche Logik wie in install.ps1, damit beide Skripte
+# dieselbe Entscheidung treffen. Der Import ist der Pruefpunkt: ein Paket kann
+# installiert und trotzdem nicht importierbar sein.
+confirm_py_package() {   # $1=python  $2=Modul  $3=Paket
+  local py="$1" modul="$2" paket="$3"
+  "$py" -c "import $modul" >/dev/null 2>&1 && return 0
+  printf '    Installiere %s...\n' "$paket"
+  "$py" -m pip install --quiet "$paket" >/dev/null 2>&1 \
+    || "$py" -m pip install --quiet --break-system-packages "$paket" >/dev/null 2>&1 \
+    || true
+  "$py" -c "import $modul" >/dev/null 2>&1
+}
 
 echo
 echo "  Campus Next-Gen Data-Hub - Installation (Linux/macOS)"
@@ -74,19 +114,28 @@ fi
 
 cyan "Testdaten laden (fm_rna, hso_personal, fm_inst, fm_gebaeude, k_plz, anredetitel, k_hochschule, k_res, hso_students, fm_stamm)"
 loaders="scripts/load_json.py scripts/load_fm_inst.py scripts/load_fm_gebaeude.py scripts/load_k_plz.py scripts/load_lookups.py scripts/load_hso_students.py scripts/load_fm_stamm.py"
-if command -v python3 >/dev/null 2>&1 && python3 -c "import psycopg2" >/dev/null 2>&1; then
-  # Host-Python mit psycopg2 vorhanden -> direkt nutzen.
-  # openpyxl wird von load_fm_stamm.py (rooms.xltx) benoetigt. Auf PEP-668-Systemen
-  # (neuere Debian/Ubuntu) verweigert pip die System-Installation ohne --break-system-packages.
-  python3 -c "import openpyxl" >/dev/null 2>&1 \
-    || python3 -m pip install --quiet openpyxl >/dev/null 2>&1 \
-    || python3 -m pip install --quiet --break-system-packages openpyxl >/dev/null 2>&1 \
-    || warn "openpyxl konnte nicht installiert werden - load_fm_stamm.py wird ggf. uebersprungen."
+
+# Entscheidung ueber den Ladeweg, identisch zu install.ps1: Host-Python nur dann,
+# wenn psycopg2 UND openpyxl danach wirklich importierbar sind. psycopg2 braucht
+# jeder Loader, openpyxl nur load_fm_stamm.py (rooms.xltx). Klappt eines von
+# beiden nicht, uebernimmt der Docker-Fallback komplett, statt sieben Loader
+# einzeln scheitern zu lassen.
+host_weg_ok=0
+if PY="$(find_python)"; then
+  psycopg_ok=1; openpyxl_ok=1
+  confirm_py_package "$PY" psycopg2 psycopg2-binary || { psycopg_ok=0; warn "psycopg2 nicht verfuegbar."; }
+  confirm_py_package "$PY" openpyxl openpyxl        || { openpyxl_ok=0; warn "openpyxl nicht verfuegbar."; }
+  [ "$psycopg_ok" -eq 1 ] && [ "$openpyxl_ok" -eq 1 ] && host_weg_ok=1
+else
+  warn "Kein echtes Python 3 gefunden."
+fi
+
+if [ "$host_weg_ok" -eq 1 ]; then
   # Loader einzeln und TOLERANT ausfuehren: ein fehlschlagender Loader (kaputte CSV,
-  # DB-Haenger, fehlendes openpyxl) darf unter 'set -e' nicht das ganze Skript killen.
+  # DB-Haenger) darf unter 'set -e' nicht das ganze Skript killen.
   failed=""
   for l in $loaders; do
-    if ! python3 "$l"; then failed="$failed $l"; fi
+    if ! "$PY" "$l"; then failed="$failed $l"; fi
   done
   if [ -z "$failed" ]; then
     ok "Testdaten erfolgreich geladen (Host-Python)."
@@ -95,7 +144,7 @@ if command -v python3 >/dev/null 2>&1 && python3 -c "import psycopg2" >/dev/null
   fi
 else
   # Sonst: tolerante Loader in einem Wegwerf-Container (kein Host-Python noetig)
-  warn "Kein Host-Python mit psycopg2 - lade Daten ueber python:3.12-slim Container."
+  warn "Kein brauchbares Host-Python - lade Daten ueber python:3.12-slim Container."
   docker run --rm --network airbyte_net --env-file .env \
     -e SOURCE_PG_HOST=hso_source_postgres -e SOURCE_PG_PORT=5432 \
     -v "$ROOT:/app" -w /app python:3.12-slim \
@@ -114,10 +163,14 @@ cat <<'EOF'
     Dest    MySQL       ->  localhost:3306  (destdb   / destuser  )
     File    Server      ->  localhost:8888  (CSV-Flatfiles)
 
-  Naechster Schritt: Airbyte starten
-    bash scripts/setup-airbyte.sh
+  Noch zwei Schritte bis zum Demo-Zustand:
 
-  Oder direkt zum Installations-Guide:
-    docs/installation-guide.md
+    2) bash scripts/setup-airbyte.sh      Airbyte installieren (interaktiv)
+    3) bash scripts/setup-szenarien.sh    Mapping, Bilder, Syncs, dbt
+
+  Danach steht der Zustand, den docs/ergebnisse.md beschreibt. Nachpruefen:
+    python3 scripts/pruefe_szenarien.py
+
+  Der komplette Weg steht in docs/installation-guide.md
   ===================================================
 EOF
