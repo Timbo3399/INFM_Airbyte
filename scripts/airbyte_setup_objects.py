@@ -160,6 +160,11 @@ def destination_mysql_config(host, port, database, username, password):
         "ssl": False,
         # Ohne allowPublicKeyRetrieval verweigert MySQL 8 die Verbindung.
         "jdbc_url_params": "allowPublicKeyRetrieval=true",
+        # Rohdaten in dieselbe Datenbank schreiben. Voreingestellt waere
+        # airbyte_internal, und weil das in MySQL eine eigene Datenbank ist,
+        # muesste der Connector sie anlegen duerfen. destuser darf nur auf
+        # destdb, der Sync stirbt sonst mit Exit-Code 1 im Destination-Prozess.
+        "raw_data_schema": database,
         "tunnel_method": NO_TUNNEL,
     }
 
