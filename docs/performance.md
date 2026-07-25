@@ -14,9 +14,9 @@ Anschließend werden experimentelle Performanceanalysen aufgezeigt, welche die v
 
 ### Skalierbarkeit und Flexibilität der Infrastruktur
   - Airbyte läuft modular in Containern (Jeder Sync läuft als eigener Docker-Container)
-  - Große **Ausfallsicherheit** durch die Containisierung und der damit verbundenen starken Prozessisolierung
+  - Große **Ausfallsicherheit** durch die Containerisierung und der damit verbundenen starken Prozessisolierung
   - **Flexibilität und Skalierbarkeit** durch Entkoppelung von Quelle und Ziel
-  - Performanceverbesserung bei großen Datenmengen durch **horizontale Skalierung** von Kubernetes
+  - Performanceverbesserung bei großen Datenmengen durch **horizontale und vertikale Skalierung** von Kubernetes
     - Hochsetzen der Limits für CPU und Arbeitsspeicher für die Hauptprozesse
     - Konfiguration der Worker-Replikate und der maximalen Sync-Workers für mehr Parallelität
     - Airbyte kann auch Daten komprimieren um eine bessere Netzwerkbandbreite und geringere Transferkosten zu erreichen
@@ -30,7 +30,16 @@ Anschließend werden experimentelle Performanceanalysen aufgezeigt, welche die v
       - Checkpointing und Sicherheitshandshakes mit Statemessages (siehe: Qualitätssicherung: State Messages)
       - Overhead durch JSON-Schema-Validierung besonders bei sehr breiten Tabellen
       - Breite Tabellen (=viele Spalten) belasten außerdem den Arbeitsspeicher stark
-
+  - Parallelisierung
+      - Airbyte arbeitet hochgradig parallel auf 3 Ebenen:
+            - Pipelining: Quell-Connector liest und streamt direkt über STDOUT, Airbyte nimmt es an und gibt es dem Ziel über STDIN weiter,.. (siehe auch State Management: quality_assurance.md)
+            - Paralleles Lesen
+                - Connection Pooling bei Datenbanken: Gleichzeitiges Öffnen meherer Datenbankverbindungen (2 bis 4 pro CPU-Kern) zur Verteilung der Abfragelast und Steigerung des Durchsatzes
+                - Multi-Threading bei Dateien (Chunk-based Reading): Zerlegung in Blöcken und Abarbeitung von mehreren Threads
+            - Paralleles Schreiben
+               - Bulk Insert & Batching: Daten werden in großen Paketen (Batches von 1.000 bis 10.000 Zeilen) parallel in die Zieldatenbank eingefügt statt Zeile für Zeile
+               - Cloud-Native Parallelisierung
+                            
 ## Experimentelle Performanceanalyse von Airbyte
 
 ### Testvorbereitung: 
