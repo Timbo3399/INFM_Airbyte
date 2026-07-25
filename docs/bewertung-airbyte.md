@@ -94,11 +94,22 @@ Intervalle unter 15 Minuten gibt es ohnehin erst in den Paid-Tiers.
 sauber halten muss, zahlt dafür etwa das Doppelte an Laufzeit.
 
 **Constraints der Quelle kommen nicht mit.** Die Zieltabelle, die der Destination-Connector
-anlegt, übernimmt den Primärschlüssel der Quelle nicht. Bei `fm_stamm` ist uns das
+anlegt, übernimmt den Primärschlüssel der Quelle nicht. Bei `fm_stamm` ist es uns zuerst
 aufgefallen: unser Loader verwirft eine PK-Dublette und schreibt 1.244 Zeilen, der
-File-Connector überträgt alle 1.245. Datenintegrität ist damit eine Frage des Sync-Modus,
-nicht der Datenbank. Wer bisher darauf vertraut, dass die Ziel-DB unsaubere Daten ablehnt,
-muss das bei einer Migration neu absichern.
+File-Connector überträgt alle 1.245.
+
+In Szenario 5 haben wir es dann direkt nachgesehen. `hso_user` in MySQL wird mit
+`user_id` als Primärschlüssel und Modus *Append + Deduped* synchronisiert. In der
+Zieltabelle steht danach trotzdem kein Primärschlüssel und kein eindeutiger Index,
+`SHOW KEYS` meldet für jeden Index `Non_unique = 1`. Der von Airbyte angelegte
+`dedup_idx` liegt auf `(_airbyte_extracted_at, user_id, updatedat)` und ist ebenfalls
+nicht eindeutig. Die 5.922 eindeutigen `user_id` im Ziel sind also allein das Ergebnis
+der Dedup-Logik im Sync, nicht einer Datenbank-Bedingung.
+
+Praktisch heißt das: fällt der Sync-Modus versehentlich auf Append zurück oder greift die
+Deduplizierung nicht, nimmt die Zieltabelle die Duplikate widerspruchslos an. Wer bisher
+darauf vertraut, dass die Ziel-DB unsaubere Daten ablehnt, muss diese Absicherung bei
+einer Migration selbst nachrüsten, etwa über nachgelagerte Constraints oder Tests.
 
 ---
 

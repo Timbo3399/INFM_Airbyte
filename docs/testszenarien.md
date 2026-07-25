@@ -233,12 +233,75 @@ CREATE TABLE hso_user (
 
 **Änderungs-Test:**
 ```sql
--- Neue Zeile in source-postgres einfügen
-INSERT INTO hso_students (mtknr, firstname, surname, updatedat)
-VALUES (999001, 'Test', 'Nutzer', NOW());
+-- Feld in der Quelle aendern, updatedat mitziehen (sonst sieht der Cursor nichts)
+UPDATE hso_students SET studentstatus='AENDERUNGSTEST', updatedat=NOW()
+WHERE user_id = 'abauer';
 
--- Sync starten → hso_user in MySQL sollte neue Zeile enthalten
+-- Sync starten, danach im Ziel pruefen
 ```
+
+```powershell
+python scripts/airbyte_run_sync.py "HSO IdM hso_user nach MySQL"
+```
+
+### Aufbau
+
+Airbyte synchronisiert Streams 1:1, ein UNION zweier Quelltabellen in eine Zieltabelle
+ist nicht vorgesehen. Die Zusammenführung passiert deshalb vor Airbyte, in der View
+[`sql/source/views/hso_user.sql`](../sql/source/views/hso_user.sql). Airbyte liest sie
+wie eine normale Tabelle.
+
+```powershell
+python scripts/mapping/create_hso_user_view.py     # View anlegen (5.922 Zeilen)
+python scripts/airbyte_setup_objects.py            # Sources + Destinations
+python scripts/airbyte_setup_connections.py        # Connections inkl. IdM
+```
+
+### Ergebnis
+
+Vier Syncs, alle über die API ausgelöst:
+
+| Job | Anlass | Gelesen | Volumen | Dauer |
+|---|---|---:|---:|---|
+| 2 | Erstlauf | 5.922 | 1.110.471 B | PT1M |
+| 3 | nach der Änderung an `abauer` | 5.922 | 1.110.484 B | PT31S |
+| 4 | ohne Änderung | 1 | 197 B | PT31S |
+
+Im Ziel stehen 5.922 Zeilen mit 5.922 verschiedenen `user_id`, davon 5.052 Studierende
+und 870 Personal. Der geänderte Status steht nach dem Sync in MySQL, und es ist keine
+zweite Zeile für `abauer` entstanden: die Deduplizierung greift.
+
+Drei Beobachtungen dazu:
+
+**Der Cursor ist einschließend.** Job 4 liest ohne jede Änderung eine Zeile statt keiner.
+Das ist die Zeile mit dem höchsten `updatedat`. Airbyte filtert mit `>=`, um bei
+gleichen Zeitstempeln nichts zu verlieren, und liest die Grenzzeile deshalb jedes Mal
+erneut. Harmlos, aber gut zu wissen, wenn man Zeilenzahlen vergleicht.
+
+**Die ersten beiden Läufe lasen alles.** Dass der Erstlauf einem Full Refresh entspricht,
+war bekannt. Dass auch Job 3 noch alle 5.922 Zeilen las und erst Job 4 auf die Delta-Menge
+umschaltete, haben wir nicht abschließend erklärt. Wer das nachstellt, sollte den dritten
+Lauf mitmessen, bevor er aus einer einzelnen Messung Schlüsse zieht.
+
+**Die Rohtabelle wächst mit jedem Lauf.** `destdb_raw__stream_hso_user` enthält nach den
+drei erfolgreichen Syncs 11.845 Zeilen (5.922 + 5.922 + 1), die Zieltabelle dagegen
+konstant 5.922. Die Deduplizierung passiert also erst beim Aufbau der finalen Tabelle,
+der Rohbestand bleibt vollständig liegen und braucht auf Dauer eine Aufräumstrategie.
+
+### Der Primärschlüssel steht nur auf dem Papier
+
+`user_id` ist als Primary Key konfiguriert, in der MySQL-Zieltabelle existiert aber weder
+ein Primärschlüssel noch ein eindeutiger Index:
+
+```sql
+SHOW KEYS FROM hso_user;   -- jeder Index meldet Non_unique = 1
+```
+
+Airbyte legt lediglich `dedup_idx` auf `(_airbyte_extracted_at, user_id, updatedat)` an,
+ebenfalls nicht eindeutig. Die Eindeutigkeit der 5.922 `user_id` kommt allein aus der
+Dedup-Logik des Syncs. Fällt der Modus versehentlich auf Append zurück, nimmt die
+Zieltabelle Duplikate widerspruchslos an. Dasselbe Muster hatten wir schon bei `fm_stamm`
+(siehe [etl-prozess.md](etl-prozess.md)), hier ist es direkt nachgewiesen.
 
 ---
 
