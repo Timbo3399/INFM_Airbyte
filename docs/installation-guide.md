@@ -1,9 +1,9 @@
-# Installationsanleitung – Campus Next-Gen Data-Hub
+# Installationsanleitung: Campus Next-Gen Data-Hub
 
 > **Für wen:** Alle Projektmitglieder (Timo + Kommilitonen)  
-> **Zeitaufwand:** ca. 15–20 Minuten  
+> **Zeitaufwand:** ca. 15 bis 20 Minuten  
 > **Betriebssystem:** Windows 10/11, Linux oder macOS  
-> **Konvention:** Windows nutzt die PowerShell-Skripte (`.ps1`), Linux/macOS die Bash-Skripte (`.sh`) — gleiche Logik, gleiches Ergebnis.
+> **Konvention:** Windows nutzt die PowerShell-Skripte (`.ps1`), Linux/macOS die Bash-Skripte (`.sh`). Logik und Ergebnis sind gleich.
 
 ---
 
@@ -51,7 +51,7 @@ Account-Mapping) wird Python aber empfohlen.
 
 ## 2. Repo klonen
 
-Terminal öffnen — **Windows:** PowerShell (Win+X → "Terminal"), **Linux/macOS:** Terminal:
+Terminal öffnen. **Windows:** PowerShell (Win+X → "Terminal"), **Linux/macOS:** Terminal:
 
 ```bash
 git clone https://github.com/Timbo3399/INFM_Airbyte.git
@@ -81,7 +81,7 @@ Das Skript:
 - startet alle vier Container (source-postgres, dest-postgres, dest-mysql, file-server)
 - wartet bis alle Container healthy sind
 - laedt die Testdaten in source-postgres via tolerante Python-Loader
-  (`fm_rna`, `hso_personal`, `fm_inst`, `fm_gebaeude`, `k_plz`) — Host-Python optional,
+  (`fm_rna`, `hso_personal`, `fm_inst`, `fm_gebaeude`, `k_plz`). Host-Python ist optional,
   sonst automatischer Docker-Fallback (`hso_students` ist ausgenommen, s. u.)
 - zeigt Verbindungsinfos an
 
@@ -98,16 +98,16 @@ Danach weiter mit [Schritt 5: Airbyte aufsetzen](#5-airbyte-aufsetzen).
 
 Falls das automatische Skript nicht funktioniert:
 
-**1. Konfigurationsdatei anlegen** — Windows: `Copy-Item .env.example .env` · Linux/macOS: `cp .env.example .env` (Passwörter bei Bedarf in `.env` anpassen)
+**1. Konfigurationsdatei anlegen.** Windows: `Copy-Item .env.example .env` · Linux/macOS: `cp .env.example .env` (Passwörter bei Bedarf in `.env` anpassen)
 
-**2.–4. Images laden, Stack starten, Status prüfen** (identisch auf allen Plattformen):
+**2. bis 4. Images laden, Stack starten, Status prüfen** (identisch auf allen Plattformen):
 ```bash
 docker compose pull       # Images vorab laden
 docker compose up -d      # Stack starten
 docker compose ps         # warten bis alle "healthy" sind
 ```
 
-> Anschließend Testdaten laden: Loader ausführen (siehe Abschnitt „Testdaten wurden nicht geladen" im Troubleshooting) — auf allen Plattformen via Host-Python **oder** Docker-Fallback.
+> Anschließend Testdaten laden: Loader ausführen (siehe Abschnitt „Testdaten wurden nicht geladen" im Troubleshooting). Das geht auf allen Plattformen via Host-Python **oder** Docker-Fallback.
 
 ---
 
@@ -132,7 +132,7 @@ Das Skript:
   (Details: [airbyte-setup.md](airbyte-setup.md) Abschnitt 7)
 - danach Login-Passwort setzen (Schritt unten)
 
-Die Installation dauert **5–10 Minuten** (Container-Downloads).
+Die Installation dauert **5 bis 10 Minuten** (Container-Downloads).
 
 **Status pruefen:**
 
@@ -149,9 +149,9 @@ abctl local credentials
 ```
 
 > Ausgabe zeigt E-Mail, generiertes Passwort, Client-ID und Client-Secret (Passwort
-> im Klartext — daher nur bei Bedarf ausführen).
+> im Klartext, daher nur bei Bedarf ausführen).
 
-**Eigenes Passwort setzen** — E-Mail (= Login-Name) und Passwort in **zwei getrennten**
+**Eigenes Passwort setzen.** E-Mail (also der Login-Name) und Passwort in **zwei getrennten**
 Aufrufen, erst die E-Mail:
 
 ```powershell
@@ -263,7 +263,7 @@ python3 scripts/load_fm_gebaeude.py
 python3 scripts/load_k_plz.py
 ```
 
-> Die CSV-`COPY`-Befehle im SQL-Init wurden entfernt — die Quell-CSVs sind zu
+> Die CSV-`COPY`-Befehle im SQL-Init wurden entfernt, denn die Quell-CSVs sind zu
 > unsauber für ein direktes `COPY` (eingebettete Header, unquotierte Trennzeichen,
 > doppelt-kodierte Umlaute). `hso_students` bleibt in der Source-DB leer (CSV
 > strukturell defekt) und wird via Airbyte File-Connector geladen.

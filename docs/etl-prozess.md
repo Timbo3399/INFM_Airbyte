@@ -1,6 +1,6 @@
 # Erster ETL-Prozess (Runbook)
 
-Ziel: der **einfachste vollständige ETL-Lauf** als Meilenstein-Nachweis — eine
+Ziel: der **einfachste vollständige ETL-Lauf** als Meilenstein-Nachweis: eine
 Tabelle aus der Source-PostgreSQL über Airbyte in die Ziel-PostgreSQL kopieren
 (Full Refresh | Overwrite). Die eingebetteten **Screenshots** (Ordner `pictures/`)
 zeigen die realen Schritte aus dem durchgeführten Lauf.
@@ -27,7 +27,7 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 
 ---
 
-## Schritt 1 — Source anlegen (PostgreSQL)
+## Schritt 1: Source anlegen (PostgreSQL)
 
 **Sources → + New Source → Postgres**
 
@@ -42,24 +42,24 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 | SSL mode | `disable` |
 
 **Advanced → Update Method:** **`Scan Changes with User Defined Cursor`** wählen.
-> ⚠️ Standard ist **CDC** (Read Changes using Change Data Capture) — das **scheitert** bei uns,
+> Achtung: Standard ist **CDC** (Read Changes using Change Data Capture). Das **scheitert** bei uns,
 > weil die Source-DB kein `wal_level = logical`/Replication Slot hat. Darum auf
 > *User Defined Cursor* umstellen (passt auch zur `updatedat`-Spalte für Szenario 5).
 
-> ⚠️ **Browser-Autofill aufpassen:** Chrome füllt die Felder **Username/Password** gern
+> Achtung, **Browser-Autofill:** Chrome füllt die Felder **Username/Password** gern
 > automatisch mit deinen **Airbyte-Login-Daten** vor. Vor dem Speichern prüfen, dass dort
 > wirklich `sourceuser` / `sourcepassword` steht (nicht deine Login-E-Mail).
 
 → **Set up source** → Verbindungstest grün.
 > Der **erste** Connector-Test dauert ~1 Min (Airbyte startet dafür einen Connector-Pod im Cluster).
 
-![Postgres-Source – Verbindungsfelder](../pictures/03-source-postgres-config.jpg)
+![Postgres-Source, Verbindungsfelder](../pictures/03-source-postgres-config.jpg)
 
-![Postgres-Source – Update-Methode „Scan Changes with User Defined Cursor"](../pictures/04-source-postgres-update-method-cursor.jpg)
+![Postgres-Source, Update-Methode „Scan Changes with User Defined Cursor"](../pictures/04-source-postgres-update-method-cursor.jpg)
 
 ![Source erfolgreich angelegt (HSO Source PostgreSQL)](../pictures/05-source-postgres-angelegt.jpg)
 
-## Schritt 2 — Destination anlegen (PostgreSQL)
+## Schritt 2: Destination anlegen (PostgreSQL)
 
 **Destinations → + New Destination → Postgres**
 
@@ -78,40 +78,40 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 
 → **Set up destination** → Verbindungstest grün.
 
-![Postgres-Destination – Verbindungsfelder (Port 5434, SSL disable)](../pictures/06-destination-postgres-config.jpg)
+![Postgres-Destination, Verbindungsfelder (Port 5434, SSL disable)](../pictures/06-destination-postgres-config.jpg)
 
 ![Destination erfolgreich angelegt (HSO Dest PostgreSQL)](../pictures/07-destination-postgres-angelegt.jpg)
 
-## Schritt 3 — Connection & Stream-Auswahl
+## Schritt 3: Connection und Stream-Auswahl
 
 **Connections → + New Connection** → Source `HSO Source PostgreSQL`, Destination `HSO Dest PostgreSQL`.
 Airbyte führt automatisch eine **Schema-Discovery** aus (zeigt die 7 Streams).
 
 <em>Das Schema wird nicht automatisch aktualisiert, es wird aber erkannt, wenn sich etwas geändert hat</em>.
 
-- Streams auswählen: für den ersten Lauf **`fm_gebaeude`** (25 Zeilen) und **`k_plz`** (~34.000) — klein + groß.
+- Streams auswählen: für den ersten Lauf **`fm_gebaeude`** (25 Zeilen) und **`k_plz`** (rund 34.000), also eine kleine und eine große Tabelle.
 - **Sync mode pro Stream auf `Full refresh | Overwrite` stellen.**
-  > ⚠️ „Replicate Source" setzt die Streams automatisch auf **Incremental | Append + Deduped**.
+  > Achtung: „Replicate Source" setzt die Streams automatisch auf **Incremental | Append + Deduped**.
   > Da unsere Tabellen weder einen passenden **Cursor** noch einen **Primary Key** definiert
   > haben, erscheint dann „Primary key / cursor missing" und *Next* bleibt gesperrt. Den
   > Sync-Modus jeder Zeile per Dropdown auf **Full refresh | Overwrite** ändern → Fehler weg.
-- Schedule type: **Scheduled / Every 24 hours** (Default) oder **Manual** — für den Test egal,
+- Schedule type: **Scheduled / Every 24 hours** (Default) oder **Manual**. Für den Test ist das gleichgültig,
   „Finish & Sync" startet ohnehin sofort einen Lauf.
 
-![Connection-Wizard – Ziel-Auswahl](../pictures/12-connection-ziel-auswahl.jpg)
+![Connection-Wizard, Ziel-Auswahl](../pictures/12-connection-ziel-auswahl.jpg)
 
-## Schritt 4 — Sync ausführen
+## Schritt 4: Sync ausführen
 
-Im letzten Wizard-Schritt **„Finish & Sync"** klicken — das legt die Connection an und
+Im letzten Wizard-Schritt **„Finish & Sync"** klicken. Das legt die Connection an und
 startet sofort den ersten Lauf. Auf der **Status**-Seite die Streams beobachten, bis sie
 von *Syncing* auf **Synced** (grüner Haken) springen.
 
 > Der erste Sync braucht ~1 Min Vorlauf (Sync-Pod-Start), danach geht's schnell.
 > Verifizierter Lauf: **fm_gebaeude 25 loaded**, **k_plz 34.172 loaded** (= Source-Zeilen).
 
-![Status-Seite – Streams werden synchronisiert (fm_gebaeude, k_plz)](../pictures/08-connection-pg-pg-sync.jpg)
+![Status-Seite, Streams werden synchronisiert (fm_gebaeude, k_plz)](../pictures/08-connection-pg-pg-sync.jpg)
 
-## Schritt 5 — Ergebnis verifizieren (Ziel-DB)
+## Schritt 5: Ergebnis verifizieren (Ziel-DB)
 
 ```bash
 # funktioniert auf allen Plattformen (Docker)
@@ -121,7 +121,7 @@ docker exec -it hso_dest_postgres psql -U destuser -d destdb -c "SELECT count(*)
 ```
 
 Erwartet: `fm_gebaeude` = 25, `k_plz` = 34.172 (entspricht der Source).
-*(Hier ggf. einen Terminal-Screenshot der Zeilenzahlen einfügen — Nachweis, dass die Daten angekommen sind.)*
+*(Hier ggf. einen Terminal-Screenshot der Zeilenzahlen einfügen, als Nachweis dass die Daten angekommen sind.)*
 
 ---
 
@@ -151,19 +151,19 @@ Erwartet: `fm_gebaeude` = 25, `k_plz` = 34.172 (entspricht der Source).
 
 Zum Vergleich kann dieselbe Source zusätzlich nach MySQL synchronisiert werden
 (`host.docker.internal:3306`, SSL **aus**, JDBC-Param `allowPublicKeyRetrieval=true`,
-Raw table database `destdb`) — Details in [airbyte-setup.md](airbyte-setup.md), Kap. 6.
+Raw table database `destdb`). Details in [airbyte-setup.md](airbyte-setup.md), Kap. 6.
 
-![MySQL-Destination – Optional fields (Passwort, SSL-Toggle, JDBC-Params, Raw-DB)](../pictures/09-destination-mysql-config.jpg)
+![MySQL-Destination, Optional fields (Passwort, SSL-Toggle, JDBC-Params, Raw-DB)](../pictures/09-destination-mysql-config.jpg)
 
 ## Optional: File-Connector (Flatfile-ETL)
 
 Studierendendaten (`hso_students`) liegen wegen der defekten CSV nur als Flatfile vor
 und werden über den **File-Connector** (`/local/hso_students.csv`, Trennzeichen `|`)
-eingebunden — siehe [airbyte-setup.md](airbyte-setup.md), Kap. 7.
+eingebunden, siehe [airbyte-setup.md](airbyte-setup.md), Kap. 7.
 
-![File-Connector – Connector-Auswahl/Formular](../pictures/10-source-file-connector.jpg)
+![File-Connector, Connector-Auswahl und Formular](../pictures/10-source-file-connector.jpg)
 
-![File-Source hso_students – Storage Provider „local", URL `/local/hso_students.csv`](../pictures/11-source-file-hso-students.jpg)
+![File-Source hso_students, Storage Provider „local", URL `/local/hso_students.csv`](../pictures/11-source-file-hso-students.jpg)
 
 ## Befüllung der Stammdaten aus rooms.xltx
 

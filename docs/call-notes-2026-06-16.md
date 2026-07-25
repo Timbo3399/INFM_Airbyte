@@ -1,4 +1,4 @@
-# Call-Notizen & Themensammlung — 16.06.2026
+# Call-Notizen und Themensammlung, 16.06.2026
 
 Mitschriften aus dem Call, ausformuliert und thematisch geordnet. Bezieht sich auf
 das lokale Airbyte-Setup (`abctl`/kind, Source-PostgreSQL → Ziel-PostgreSQL & MySQL,
@@ -20,17 +20,17 @@ Zusammengeführt aus den Mitschriften von Timo, Isabella und Rebecca.
 ### Die Phasen eines Syncs
 Ein Airbyte-Sync läuft in festen Phasen ab:
 
-1. **Trigger** — Start per Zeitplan (Cron), manuell oder über die API. Zuerst wird
+1. **Trigger.** Start per Zeitplan (Cron), manuell oder über die API. Zuerst wird
    `check` an Source- *und* Destination-Connector aufgerufen (stehen beide Verbindungen?).
-2. **Read (Extract)** — Der Source-Connector liest die Daten; jeder Datensatz wird zu
+2. **Read (Extract).** Der Source-Connector liest die Daten; jeder Datensatz wird zu
    einer `AirbyteRecordMessage` (JSON). Der Sync-Modus bestimmt, *was* gelesen wird.
-3. **Transfer (Plattform)** — Airbyte puffert und batcht die Records. Hier findet
+3. **Transfer (Plattform).** Airbyte puffert und batcht die Records. Hier findet
    **keine** Transformation statt (ELT-Prinzip: Daten bleiben roh).
-4. **Write (Load)** — Der Destination-Connector schreibt zunächst in eine
+4. **Write (Load).** Der Destination-Connector schreibt zunächst in eine
    **Raw-Tabelle** (`_airbyte_raw_…`) mit JSON-Blob + Metadaten (Ladezeit, Hash).
-5. **Typing & Deduping** — Die Raw-Daten werden in die finale, typisierte Tabelle
+5. **Typing und Deduping.** Die Raw-Daten werden in die finale, typisierte Tabelle
    überführt; bei Dedup-Modus werden Duplikate über den Primary Key entfernt.
-6. **State / Checkpoint** — Bei Incremental wird der Fortschritt (z. B. höchster
+6. **State und Checkpoint.** Bei Incremental wird der Fortschritt (z. B. höchster
    `updatedAt`-Wert) gespeichert, auch zwischendurch.
 
 **Lesen findet außerdem parallel zum Schreiben statt**
@@ -38,7 +38,7 @@ Ein Airbyte-Sync läuft in festen Phasen ab:
 Airbyte fügt außerdem weitere Airbyte_Metadaten in das Ziel ein bzw. updatet sie:
 _airbyte_raw_id, _airbyte_extracted_at und _airbyte_meta, _airbyte_generation_id
 
-> ⚠️ Problem: csv-Import --> Source-DB --> Dest-DB
+> Problem: csv-Import --> Source-DB --> Dest-DB
 > schlägt fehl, da Airbyte dann versucht seine Metadaten erneut einzufügen!
 > Daher sollte direkt ohne Umwege ins Ziel kopiert werden.
 > Problem: durch den fehlenden Cursor stehen nur noch die Full refresh Sync-Methoden zur Auswahl
@@ -50,10 +50,10 @@ Hängt vom **Sync-Modus** ab:
 
 | Modus | Liest jedes Mal alles? |
 |---|---|
-| Full Refresh – Overwrite | **Ja** — Ziel wird geleert und komplett neu geladen |
-| Full Refresh – Append | **Ja** — alles wird erneut angehängt (Snapshots/Historie) |
-| Incremental – Append | **Nein** — nur Sätze neuer als der Cursor |
-| Incremental – Append + Dedup | **Nein** — nur Neues, dedupliziert per PK (häufigster Fall) |
+| Full Refresh / Overwrite | **Ja**, Ziel wird geleert und komplett neu geladen |
+| Full Refresh / Append | **Ja**, alles wird erneut angehängt (Snapshots/Historie) |
+| Incremental / Append | **Nein**, nur Sätze neuer als der Cursor |
+| Incremental / Append + Dedup | **Nein**, nur Neues, dedupliziert per PK (häufigster Fall) |
 
 ### Wenn ein Sync abbricht
 - **Transaktionssicher:** kein halb-importierter, kaputter Zustand in der finalen Tabelle.
@@ -61,7 +61,7 @@ Hängt vom **Sync-Modus** ab:
   `ToDo:` genaue Anzahl/Logik der Retry-Attempts je Airbyte-Version verifizieren.
 - **Checkpointing (nur Incremental):** der nächste Lauf macht ab dem letzten Checkpoint
   weiter, nicht von vorn.
-- **Full Refresh:** kein Teil-Aufholen — der nächste Lauf macht alles neu (robust, aber teuer).
+- **Full Refresh:** kein Teil-Aufholen, der nächste Lauf macht alles neu (robust, aber teuer).
 - Pro Connection konfigurierbar, ob bei wiederholten Fehlern automatisch deaktiviert wird.
 
 ### Paketgröße / Batching
@@ -93,25 +93,25 @@ Wege für Reihenfolge/Abhängigkeiten:
 | dbt nach dem Sync | Wenn die zweite Stufe eine Transformation in der Ziel-DB ist (kein weiterer Sync). |
 
 ### Custom Code zum Daten-Manipulieren
-Airbyte ist **ELT**, nicht ETL — keine freien Code-Snippets mitten im Sync. Möglichkeiten:
+Airbyte ist **ELT**, nicht ETL. Freie Code-Snippets mitten im Sync gibt es nicht. Möglichkeiten:
 
 | Möglichkeit | Was geht | Was nicht |
 |---|---|---|
-| Mappings (Connection-UI) ⚠️ **Paid (ab Plus)** | Felder umbenennen, hashen/verschlüsseln, Zeilen filtern | nicht in Core; keine freie Logik / Berechnungen |
+| Mappings (Connection-UI), **kostenpflichtig ab Plus** | Felder umbenennen, hashen/verschlüsseln, Zeilen filtern | nicht in Core; keine freie Logik / Berechnungen |
 | Connector Builder / Low-Code CDK | eigene Quell-Connectoren (Extraktion) | keine Ziel-Transformation |
 | dbt (nach dem Load) | beliebige SQL-Transformationen | externes Tool, separat aufzusetzen |
 
 > Unsere Python-Loader (`demojibake`, `normalize`, `generate_account`) sind faktisch
-> unsere Custom-Transformation — bewusst **vor** Airbyte, weil die Roh-CSVs unsauber sind.
+> unsere Custom-Transformation, bewusst **vor** Airbyte, weil die Roh-CSVs unsauber sind.
 
 ---
 
 ## 3. Eigene Connectoren
 
 ### Drei Ebenen (einfach → mächtig)
-1. **Connector Builder** (Airbyte-UI, kein Code) — für REST-APIs; direkt in der UI testbar.
-2. **Low-Code CDK** (`manifest.yaml`) — deklarativ, versionierbar im Git.
-3. **Python CDK** (voller Code) — für Nicht-REST: Datenbanken, SOAP, exotische Formate.
+1. **Connector Builder** (Airbyte-UI, kein Code) für REST-APIs, direkt in der UI testbar.
+2. **Low-Code CDK** (`manifest.yaml`), deklarativ und versionierbar im Git.
+3. **Python CDK** (voller Code) für Nicht-REST: Datenbanken, SOAP, exotische Formate.
 
 ### Aufbau jedes Connectors
 Jeder Connector läuft als **Docker-Image** und implementiert vier Kommandos:
@@ -170,7 +170,7 @@ Definition haben.
     - Logs über die Airbyte API auszulesen ist aktuell noch nicht möglich (ggf. noch Umwege prüfen)
 
 - **Plattform-Logs:** `kubectl logs -n airbyte-abctl <pod>` (`kubectl get pods -n airbyte-abctl`).
-  `ToDo:` echten Namespace-Namen prüfen (`kubectl get namespaces`) — `airbyte-abctl` ist nicht sicher.
+  `ToDo:` echten Namespace-Namen prüfen (`kubectl get namespaces`), `airbyte-abctl` ist nicht sicher.
 - **DB-Logs:** `docker compose logs source-postgres` / `dest-postgres` (`-f` für live).
 - **Unsere Skripte:** aktuell nur `print()` auf die Konsole, kein File-Logging.
   → Möglicher Verbesserungspunkt: `logging` mit Zeitstempel + Logfile.
@@ -277,7 +277,7 @@ Community/Marketplace) sind kostenlos. Kostenpflichtig sind nur die **Cloud-/Pai
 entstehen (bezahlte API-Tiers).
 
 ### Creative Connections (Demo-Ideen)
-Externe Live-Daten als Ergänzung zu den HSO-Daten — ideal: freie APIs **ohne Key**:
+Externe Live-Daten als Ergänzung zu den HSO-Daten. Ideal sind freie APIs **ohne Key**:
 
 | Thema | API | Key nötig? |
 |---|---|---|
@@ -289,9 +289,9 @@ Externe Live-Daten als Ergänzung zu den HSO-Daten — ideal: freie APIs **ohne 
 | Strommarkt EU | ENTSO-E / Electricity Maps | ja |
 
 > Empfehlung für eine Demo: Frankfurter (Wechselkurse) **oder** Energy-Charts (Green IT)
-> im Connector Builder nachbauen — beide ohne Key, ~10 Min., zeigt externe Daten im Fluss.
+> im Connector Builder nachbauen. Beide brauchen keinen Key, dauern rund 10 Minuten zeigt externe Daten im Fluss.
 
-`ToDo:` „Key nötig?"-Spalte vor der Nutzung prüfen — API-Bedingungen/Rate-Limits können
+`ToDo:` „Key nötig?"-Spalte vor der Nutzung prüfen, denn API-Bedingungen und Rate-Limits können
 sich ändern (v. a. Energy-Charts, CoinGecko, Frankfurter).
 
 ---
@@ -303,13 +303,13 @@ nächsten Schritte relevant:
 
 - **CDC vs. Cursor:** Wir nutzen bewusst Cursor (`updatedat`) statt CDC/Xmin, um
   zusätzliche WAL-/Replication-Konfiguration zu vermeiden (siehe
-  [architektur.md §5](architektur.md)). CDC erkennt auch *Löschungen* — Cursor nicht.
+  [architektur.md §5](architektur.md)). CDC erkennt auch *Löschungen*, der Cursor nicht.
   Für eine vollständige Sync-Strategie-Doku relevant.
 - **Schema-Änderungen (Schema Drift):** Wenn sich Quellspalten ändern, kann Airbyte
-  pro Connection automatisch propagieren oder den Sync zur Bestätigung anhalten —
+  pro Connection automatisch propagieren oder den Sync zur Bestätigung anhalten.
   Verhalten sollte bewusst gesetzt werden.
   `ToDo:` genaue Optionen/Bezeichnungen im Connection-Setting eurer Version prüfen.
-- **Scheduling:** Sync-Intervall pro Connection (Cron) vs. manueller/API-Trigger —
+- **Scheduling:** Sync-Intervall pro Connection (Cron) vs. manueller oder API-Trigger,
   zusammen mit dem Verkettungs-Thema (Abschnitt 2) zu entscheiden.
 - **Idempotenz:** Unsere Loader sind idempotent (`TRUNCATE` + Reload); bei Airbyte
   übernimmt das der Sync-Modus (Overwrite vs. Append+Dedup).
@@ -320,9 +320,9 @@ nächsten Schritte relevant:
 
 ### Airbyte-Angebot: Free vs. Paid (Editionen)
 Relevant ist die Produktlinie **„Data Replication"** (es gibt daneben „Airbyte Agents",
-ein separates KI-Produkt — für uns nicht relevant). Wir nutzen die **kostenlose,
+ein separates KI-Produkt, für uns nicht relevant). Wir nutzen die **kostenlose,
 self-hosted** Edition **Core** (`abctl`/kind).
-Stand: airbyte.com/pricing, abgerufen 16.06.2026 — Preise können sich ändern.
+Stand: airbyte.com/pricing, abgerufen 16.06.2026. Preise können sich ändern.
 
 | Edition | Kosten | Hosting | Preismodell |
 |---|---|---|---|
@@ -333,19 +333,19 @@ Stand: airbyte.com/pricing, abgerufen 16.06.2026 — Preise können sich ändern
 | **Enterprise Flex** | individuell | Cloud (managed) | kapazitätsbasiert |
 
 **Was in der kostenlosen Edition (Core) enthalten ist:**
-- **600+ Connectoren** — keine Paywall
+- **600+ Connectoren**, keine Paywall
 - **Change Data Capture (CDC)** und **Schema-Propagation**
 - Connector Builder, Low-Code & Python CDK
 - Alle Sync-Modi (Full Refresh, Incremental, Dedup), Scheduling, API
 - Keine Nutzungs-/Volumengrenzen
 
 **Was nur in den Paid-Tiers dazukommt:**
-- **Managed Hosting** (kein eigener Betrieb nötig) — ab *Standard*
-- **15-Minuten-Syncs** und **Custom Mappings** — ab *Plus* ⚠️ (Mappings sind **nicht** in Core!)
-- **SSO, RBAC, mehrere Workspaces, Governance, Premium-Support** — ab *Pro*
-- **Erweiterte Data Governance, mehrere Daten-Regionen, Priority-Support** — *Enterprise Flex*
+- **Managed Hosting** (kein eigener Betrieb nötig), ab *Standard*
+- **15-Minuten-Syncs** und **Custom Mappings**, ab *Plus*. Mappings sind also **nicht** in Core.
+- **SSO, RBAC, mehrere Workspaces, Governance, Premium-Support**, ab *Pro*
+- **Erweiterte Data Governance, mehrere Daten-Regionen, Priority-Support**, nur *Enterprise Flex*
 
-> **Fazit für uns:** Funktional reicht **Core** vollständig aus — sogar CDC und alle
+> **Fazit für uns:** Funktional reicht **Core** vollständig aus, sogar CDC und alle
 > 600+ Connectoren sind kostenlos. Der Paid-Mehrwert liegt im Betrieb (Managed Hosting,
 > Support, Governance) und in Komfort-Features (Custom Mappings, 15-Min-Syncs), nicht in
 > den Connectoren oder Kern-Sync-Funktionen.
@@ -364,15 +364,15 @@ Wofür der Data-Hub konkret genutzt werden kann:
 
 ## 7. Offene Aufgaben / To-dos
 
-- [ ] **Architektur-Diagramm** als richtiges Bild erstellen (statt ASCII) — Deliverable
+- [x] **Architektur-Diagramm** als richtiges Bild erstellen (statt ASCII). Deliverable
       aus dem Prof-Feedback.
-- [ ] **Sync-Strategie-Doku** (Modi pro Tabelle, CDC vs. Cursor, Fehlerverhalten) —
+- [x] **Sync-Strategie-Doku** (Modi pro Tabelle, CDC vs. Cursor, Fehlerverhalten),
       offenes Deliverable.
 - [ ] Sync-Modus **pro Tabelle** festlegen (Full Refresh vs. Incremental+Dedup) und in
       `connections/` dokumentieren.
 - [x] Performance messen für die verschiedenen Sync-Modi bei größeren und kleineren Datensätzen
 - [ ] **Informix / SOAP**: Custom-Connector (Python CDK) vs. Skript-in-Postgres entscheiden.
-- [x] **Airbyte Free vs. Paid** ausarbeiten — erledigt (siehe Abschnitt 6, Stand 16.06.2026).
+- [x] **Airbyte Free vs. Paid** ausarbeiten, erledigt (siehe Abschnitt 6, Stand 16.06.2026).
 - [ ] **File-Logging** in den Loadern statt `print()` (optional).
 - [ ] `page_size` in `load_json.py` und `load_fm_gebaeude.py` angleichen (optional).
 - [ ] Optional: Demo-Connector für eine freie API (Frankfurter / Energy-Charts).

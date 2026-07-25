@@ -1,10 +1,12 @@
-# Architektur — Campus Next-Gen Data-Hub
+# Architektur des Campus Next-Gen Data-Hub
 
 Dieses Dokument beschreibt den Aufbau der lokalen Evaluationsumgebung für Airbyte.
+Die gezeichnete Übersicht liegt als `Architektur.png` im Projektstamm; das
+ASCII-Diagramm in Abschnitt 3 ist die Textfassung davon.
 
 ## 1. Entwurfsziele
 
-- **Reproduzierbar & lokal:** Alles läuft in Docker Desktop, per Skript in < 20 Min. aufsetzbar.
+- **Reproduzierbar und lokal:** Alles läuft in Docker Desktop, per Skript in unter 20 Minuten aufsetzbar.
 - **Realistischer Datenausschnitt:** anonymisierte Hochschuldaten (Studierende, Gebäude, Institute, Personal, PLZ).
 - **Klare Trennung Quelle/Ziel:** eine gefüllte Quell-DB, leere Ziel-DBs, in die Airbyte schreibt.
 - **Zwei Zielsysteme** (PostgreSQL und MySQL), um Airbyte-Destination-Connectoren vergleichend zu testen.
@@ -66,11 +68,16 @@ Schema: `sql/source/00_tables.sql`. Die Daten werden **nach** dem Containerstart
 | Loader | Tabelle | Besonderheit |
 |---|---|---|
 | `load_json.py` | `fm_rna`, `hso_personal` | JSON mit `{SQL_QUERY: [...]}`-Struktur |
-| `load_fm_inst.py` | `fm_inst` | 86→24 Spalten, NUL-Bytes, Mojibake |
+| `load_fm_inst.py` | `fm_inst` | 86 auf 24 Spalten reduziert, NUL-Bytes, Mojibake |
 | `load_fm_gebaeude.py` | `fm_gebaeude` | unquotierte Kommas, eingebettete Header |
 | `load_k_plz.py` | `k_plz` | 3.417 eingebettete Header gefiltert |
+| `load_lookups.py` | `anredetitel`, `k_hochschule`, `k_res` | 8 Einzeldateien zu einer Tabelle mit Diskriminator `res_typ` |
+| `load_hso_students.py` | `hso_students` | pipe-getrennt, gequotetes Feld enthält selbst Pipes |
+| `load_fm_stamm.py` | `fm_stamm` | ETL-Mapping aus `rooms.xltx` (Excel) |
 
-`hso_students` (CSV defekt) und `fm_stamm` (keine Quelldatei) sind aktuell nicht in der Source-DB — siehe Zwischenbericht, Kap. 6.
+Alle sieben Tabellen liegen damit in der Source-DB. `hso_students` (5.052 Zeilen) und
+`fm_stamm` (1.245 Zeilen) waren zunächst nicht ladbar und wurden nach dem
+Betreuer-Feedback vom 09.06.2026 über die beiden zuletzt genannten Loader ergänzt.
 
 ## 7. Ports & Zugang
 
