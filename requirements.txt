@@ -1,3 +1,9 @@
 psycopg2-binary
 requests
+openpyxl
 pytest
+
+# Transformation im Ziel (Szenario 2). Airbyte 2.x fuehrt dbt nicht mehr
+# selbst aus, es laeuft als eigener Schritt (siehe docs/dbt.md).
+dbt-core
+dbt-postgres

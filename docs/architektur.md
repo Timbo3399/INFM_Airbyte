@@ -1,10 +1,12 @@
-# Architektur — Campus Next-Gen Data-Hub
+# Architektur des Campus Next-Gen Data-Hub
 
 Dieses Dokument beschreibt den Aufbau der lokalen Evaluationsumgebung für Airbyte.
+Die gezeichnete Übersicht liegt als `Architektur.png` im Projektstamm; das
+ASCII-Diagramm in Abschnitt 3 ist die Textfassung davon.
 
 ## 1. Entwurfsziele
 
-- **Reproduzierbar & lokal:** Alles läuft in Docker Desktop, per Skript in < 20 Min. aufsetzbar.
+- **Reproduzierbar und lokal:** Alles läuft in Docker Desktop, per Skript in unter 20 Minuten aufsetzbar.
 - **Realistischer Datenausschnitt:** anonymisierte Hochschuldaten (Studierende, Gebäude, Institute, Personal, PLZ).
 - **Klare Trennung Quelle/Ziel:** eine gefüllte Quell-DB, leere Ziel-DBs, in die Airbyte schreibt.
 - **Zwei Zielsysteme** (PostgreSQL und MySQL), um Airbyte-Destination-Connectoren vergleichend zu testen.
@@ -57,7 +59,7 @@ Die **Befüllung der Source-DB** erfolgt nicht durch Airbyte, sondern vorab durc
 - **Ziel-PostgreSQL auf Port 5434** (statt 5432): Auf vielen Windows-Rechnern belegt ein nativer PostgreSQL-Dienst Port 5432; eine Airbyte-Verbindung über `host.docker.internal:5432` würde dort statt im Container landen. 5434 umgeht den Konflikt zuverlässig.
 - **File-Connector via `local` Storage Provider** (`/local/<datei>.csv`) statt HTTP: Der `source-file`-Connector erzwingt bei „HTTPS: Public Web" eine TLS-Verbindung, ein lokaler HTTP-Server wird damit nicht erreicht. Unter abctl (Kubernetes/kind) sehen die Connector-Pods das Docker-Volume `oss_local_root` **nicht**; stattdessen mountet `setup-airbyte.ps1` das Verzeichnis `sql/source/data` beim Install via `abctl local install --volume …:/local` als `/local/` und aktiviert `JOB_KUBE_LOCAL_VOLUME_ENABLED=true` (Details: [airbyte-setup.md](airbyte-setup.md) Abschnitt 7).
 - **MySQL mit `--local-infile=1`:** vom Airbyte-MySQL-Destination-Connector zum Laden benötigt.
-- **Sync-Modus Cursor (`updatedat`)** statt CDC/Xmin: vermeidet zusätzliche WAL-/Replication-Konfiguration (Vergleich der drei Methoden: [airbyte-setup.md §5](airbyte-setup.md); offene Frage im [Zwischenbericht](zwischenbericht.md)).
+- **Sync-Modus Cursor (`updatedat`)** statt CDC/Xmin: vermeidet zusätzliche WAL-/Replication-Konfiguration (Vergleich der drei Methoden: [airbyte-setup.md §5](airbyte-setup.md), Messreihen in [call-notes-2026-06-16.md](call-notes-2026-06-16.md), Bewertung in [bewertung-airbyte.md](bewertung-airbyte.md)).
 
 ## 6. Datenladung der Source-DB
 
@@ -66,11 +68,16 @@ Schema: `sql/source/00_tables.sql`. Die Daten werden **nach** dem Containerstart
 | Loader | Tabelle | Besonderheit |
 |---|---|---|
 | `load_json.py` | `fm_rna`, `hso_personal` | JSON mit `{SQL_QUERY: [...]}`-Struktur |
-| `load_fm_inst.py` | `fm_inst` | 86→24 Spalten, NUL-Bytes, Mojibake |
+| `load_fm_inst.py` | `fm_inst` | 86 auf 24 Spalten reduziert, NUL-Bytes, Mojibake |
 | `load_fm_gebaeude.py` | `fm_gebaeude` | unquotierte Kommas, eingebettete Header |
 | `load_k_plz.py` | `k_plz` | 3.417 eingebettete Header gefiltert |
+| `load_lookups.py` | `anredetitel`, `k_hochschule`, `k_res` | 8 Einzeldateien zu einer Tabelle mit Diskriminator `res_typ` |
+| `load_hso_students.py` | `hso_students` | pipe-getrennt, gequotetes Feld enthält selbst Pipes |
+| `load_fm_stamm.py` | `fm_stamm` | ETL-Mapping aus `rooms.xltx` (Excel) |
 
-`hso_students` (CSV defekt) und `fm_stamm` (keine Quelldatei) sind aktuell nicht in der Source-DB — siehe Zwischenbericht, Kap. 6.
+Die sieben Loader füllen zusammen zehn Tabellen in der Source-DB. `hso_students`
+(5.052 Zeilen) und `fm_stamm` (1.244 Zeilen) waren zunächst nicht ladbar und wurden nach dem
+Betreuer-Feedback vom 09.06.2026 über die beiden zuletzt genannten Loader ergänzt.
 
 ## 7. Ports & Zugang
 

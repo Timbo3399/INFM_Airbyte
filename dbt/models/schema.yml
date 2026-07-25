@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: fm_raeume
+    description: >
+      Denormalisierte Raumtabelle fuer das Facility Management (Szenario 2):
+      Raum, Gebaeudename, Institut, Flaeche und Kostenstelle in einer Zeile.
+    columns:
+      - name: raum_id
+        description: geb_nr, ges_nr und raumid zusammengesetzt, eindeutig je Raum
+        tests:
+          - unique
+          - not_null
+      - name: gebaeude_nr
+        description: auf vier Stellen normalisierte Gebaeudenummer
+        tests:
+          - not_null
+      - name: gebaeude
+        description: >
+          Klarname aus fm_gebaeude. Nicht null, sobald der Join ueber die
+          normalisierte Gebaeudenummer greift. Ohne Normalisierung waere hier
+          alles leer, deshalb steht der Test bewusst hier.
+        tests:
+          - not_null

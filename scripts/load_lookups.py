@@ -79,6 +79,19 @@ def read_csv(path, delimiter):
     return rows[0], rows[1:]            # header, data
 
 
+def auf_breite(row, n):
+    """Zeile auf genau n Felder bringen: auffuellen mit None, Ueberzaehliges ab.
+
+    Die Schluesseltabellen haben vereinzelt kuerzere oder laengere Zeilen als
+    der Header. Eine feste Breite ist Voraussetzung fuer execute_values.
+    """
+    return (list(row) + [None] * n)[:n]
+
+
+def ist_leer(row):
+    return not row or all((c or "").strip() == "" for c in row)
+
+
 # --- anredetitel ------------------------------------------------------------
 
 DDL_ANREDETITEL = """
@@ -115,9 +128,9 @@ def load_anredetitel(cur, base):
     _, rows = read_csv(path, ";")
     data = []
     for r in rows:
-        if not r or all((c or "").strip() == "" for c in r):
+        if ist_leer(r):
             continue
-        r = (r + [None] * 18)[:18]
+        r = auf_breite(r, 18)
         rec = []
         for i, v in enumerate(r):
             if i in ANREDETITEL_INT:
@@ -172,9 +185,9 @@ def load_k_hochschule(cur, base):
     _, rows = read_csv(path, ",")
     data = []
     for r in rows:
-        if not r or all((c or "").strip() == "" for c in r):
+        if ist_leer(r):
             continue
-        r = (r + [None] * 16)[:16]
+        r = auf_breite(r, 16)
         rec = [to_date(v) if i in K_HOCHSCHULE_DATE else clean(v)
                for i, v in enumerate(r)]
         data.append(tuple(rec))
@@ -204,29 +217,54 @@ CREATE TABLE IF NOT EXISTS k_res (
 """
 
 
+def res_typ_aus_dateiname(path):
+    """Diskriminator aus dem Dateinamen: k_res13_202603301110.csv -> "13".
+
+    Der Typ steht nur im Namen, nicht in den Daten. Passt der Name nicht,
+    kommt "?" zurueck: eine sichtbare Auffaelligkeit in der Tabelle ist besser
+    als ein Abbruch mitten im Laden.
+    """
+    m = re.search(r"k_res(\d+)_", os.path.basename(path))
+    return m.group(1) if m else "?"
+
+
+def sammle_k_res(res_typ, rows, seen):
+    """Zeilen einer k_res-Datei zu Datensaetzen, ohne Dubletten.
+
+    `seen` wird ueber alle Dateien hinweg mitgefuehrt, denn der
+    Primaerschluessel ist (res_typ, res). Derselbe Schluesselwert darf also
+    unter zwei Typen vorkommen, aber nicht zweimal unter demselben.
+
+    Liefert (Datensaetze, Anzahl uebersprungener Dubletten).
+    """
+    data, dups = [], 0
+    for r in rows:
+        if ist_leer(r):
+            continue
+        r = auf_breite(r, 5)
+        res = clean(r[0])
+        if res is None:
+            continue
+        pk = (res_typ, res)
+        if pk in seen:
+            dups += 1
+            continue
+        seen.add(pk)
+        data.append((res_typ, res, clean(r[1]), clean(r[2]),
+                     clean(r[3]), clean(r[4])))
+    return data, dups
+
+
 def load_k_res(cur, base):
     cur.execute(DDL_K_RES)
     cur.execute("TRUNCATE TABLE k_res")
     pattern = os.path.join(base, "data", "csv", "k_res", "k_res*.csv")
     data, seen, dups = [], set(), 0
     for path in sorted(glob.glob(pattern)):
-        m = re.search(r"k_res(\d+)_", os.path.basename(path))
-        res_typ = m.group(1) if m else "?"
         _, rows = read_csv(path, ";")
-        for r in rows:
-            if not r or all((c or "").strip() == "" for c in r):
-                continue
-            r = (r + [None] * 5)[:5]
-            res = clean(r[0])
-            if res is None:
-                continue
-            pk = (res_typ, res)
-            if pk in seen:
-                dups += 1
-                continue
-            seen.add(pk)
-            data.append((res_typ, res, clean(r[1]), clean(r[2]),
-                         clean(r[3]), clean(r[4])))
+        neue, dup = sammle_k_res(res_typ_aus_dateiname(path), rows, seen)
+        data.extend(neue)
+        dups += dup
     execute_values(cur, """
         INSERT INTO k_res (res_typ, res, aikz, ktxt, dtxt, ltxt)
         VALUES %s
