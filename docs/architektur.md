@@ -76,7 +76,7 @@ Schema: `sql/source/00_tables.sql`. Die Daten werden **nach** dem Containerstart
 | `load_fm_stamm.py` | `fm_stamm` | ETL-Mapping aus `rooms.xltx` (Excel) |
 
 Die sieben Loader füllen zusammen zehn Tabellen in der Source-DB. `hso_students`
-(5.052 Zeilen) und `fm_stamm` (1.245 Zeilen) waren zunächst nicht ladbar und wurden nach dem
+(5.052 Zeilen) und `fm_stamm` (1.244 Zeilen) waren zunächst nicht ladbar und wurden nach dem
 Betreuer-Feedback vom 09.06.2026 über die beiden zuletzt genannten Loader ergänzt.
 
 ## 7. Ports & Zugang

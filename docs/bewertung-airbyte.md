@@ -17,10 +17,20 @@ Alle 600+ Connectoren sind enthalten, auch Change Data Capture und Schema-Propag
 Bezahlt wird nur für Managed Hosting und Komfort, nicht für Funktionalität. Für eine
 Hochschul-IT, die ohnehin on-premise betreibt, ist das der passende Zuschnitt.
 
-**Reproduzierbarkeit.** Der komplette Stack lässt sich per Skript aufsetzen. Bei uns in
-unter 20 Minuten, plattformunabhängig über je ein PowerShell- und ein Bash-Skript.
-Damit ist eine Testumgebung jederzeit neu herstellbar, was bei den bisherigen
-handgepflegten Talend-Jobs nicht gegeben ist.
+**Reproduzierbarkeit, mit einer Einschränkung.** Der Stack lässt sich per Skript
+aufsetzen, bei uns in unter 20 Minuten, plattformunabhängig über je ein PowerShell- und
+ein Bash-Skript. Für die Datenbanken gilt das von Anfang an.
+
+Für Airbyte selbst galt es zunächst nicht. Die Konfiguration, also Sources, Destinations
+und Connections, liegt im kind-Cluster und ist nach `abctl local uninstall` verloren.
+Uns ist das einmal passiert, und alle sieben Objekte mussten von Hand neu angelegt
+werden. Airbyte bringt dafür keine Export- oder Backup-Funktion mit.
+
+Lösbar ist es über die Public API: [`scripts/airbyte_setup_objects.py`](../scripts/airbyte_setup_objects.py)
+legt die Objekte idempotent an, siehe [airbyte_api.md](airbyte_api.md#4-objekte-per-skript-anlegen).
+Für einen Produktivbetrieb heißt das aber: die Airbyte-Konfiguration gehört als Code
+versioniert, per API-Skript oder über den Terraform-Provider. Wer sich auf die UI
+verlässt, hat seinen Stand nur im Cluster liegen.
 
 **Datenbankanbindung.** PostgreSQL und MySQL funktionieren als Quelle und als Ziel
 ohne Sonderbehandlung. Wir haben dieselben Daten parallel in beide Ziele gespiegelt und
@@ -82,6 +92,13 @@ Intervalle unter 15 Minuten gibt es ohnehin erst in den Paid-Tiers.
 **Deduplizierung kostet spürbar.** Bei 75.000 Datensätzen braucht Incremental/Append
 39,67 s, derselbe Lauf mit Deduped 82,47 s. Wer wie in Szenario 5 einen Primärschlüssel
 sauber halten muss, zahlt dafür etwa das Doppelte an Laufzeit.
+
+**Constraints der Quelle kommen nicht mit.** Die Zieltabelle, die der Destination-Connector
+anlegt, übernimmt den Primärschlüssel der Quelle nicht. Bei `fm_stamm` ist uns das
+aufgefallen: unser Loader verwirft eine PK-Dublette und schreibt 1.244 Zeilen, der
+File-Connector überträgt alle 1.245. Datenintegrität ist damit eine Frage des Sync-Modus,
+nicht der Datenbank. Wer bisher darauf vertraut, dass die Ziel-DB unsaubere Daten ablehnt,
+muss das bei einer Migration neu absichern.
 
 ---
 

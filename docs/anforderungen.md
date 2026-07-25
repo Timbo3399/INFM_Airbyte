@@ -53,7 +53,8 @@ Am 09.06.2026 beantwortet, Details in [betreuer-feedback-2026-06-09.md](betreuer
   finden und dokumentieren. Gelöst über [`load_hso_students.py`](../scripts/load_hso_students.py),
   5.052 Zeilen.
 - **`fm_stamm`** ist eine Systemtabelle und selbst über ETL-Mapping aus `rooms.xltx` zu
-  füllen. Umgesetzt in [`load_fm_stamm.py`](../scripts/load_fm_stamm.py), 1.245 Zeilen.
+  füllen. Umgesetzt in [`load_fm_stamm.py`](../scripts/load_fm_stamm.py), 1.244 Zeilen
+  aus 1.245 Quellzeilen (eine PK-Dublette wird verworfen).
 - **Sync-Strategie:** Der Cursor über `updatedat` genügt. Der Methodenvergleich steht in
   [airbyte-setup.md §5](airbyte-setup.md), die Messreihen und die Bewertung in
   [bewertung-airbyte.md](bewertung-airbyte.md).

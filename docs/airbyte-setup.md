@@ -125,6 +125,19 @@ abctl local credentials --password MeinNeuesPasswort123
 
 ## 5. Sources konfigurieren
 
+> **Kuerzer geht es per Skript.** Die Abschnitte 5 und 6 beschreiben den Weg durch die UI.
+> Dieselben Sources und Destinations legt
+> [`scripts/airbyte_setup_objects.py`](../scripts/airbyte_setup_objects.py) ueber die
+> Public API an, idempotent und ohne Klicken:
+>
+> ```powershell
+> python scripts/airbyte_setup_objects.py
+> ```
+>
+> Das lohnt sich vor allem nach einem `abctl local uninstall`, weil die
+> Airbyte-Konfiguration im kind-Cluster liegt und dabei verloren geht. Details:
+> [airbyte_api.md](airbyte_api.md#4-objekte-per-skript-anlegen).
+
 ### Uebersicht aller Sources
 
 | Name in Airbyte | Typ | Verbindung |

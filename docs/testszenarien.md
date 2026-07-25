@@ -18,7 +18,7 @@ Ziel: Evaluierung von Airbyte als ETL-Tool für die Hochschul-IT (Ersatz für Ta
 | `hso_students` | Pipe-CSV | Studierende (anonym.) | 5.052 | `hso_students` (via load_hso_students.py, quote-bewusster Parser) + zusätzlich via File-Connector |
 | `fm_gebaeude` | CSV | Gebaeude der Hochschule | 25 | `fm_gebaeude` (via load_fm_gebaeude.py) |
 | `fm_inst` | Semikolon-CSV | Institute / Org-Einheiten | ~2.080 | `fm_inst` (via load_fm_inst.py) |
-| `fm_stamm` | Excel (.xltx) | Raumstammdaten (Räume) | 1.245 (nach ETL-Mapping) | `fm_stamm` (via ETL-Mapping aus rooms.xltx befüllt, siehe load_fm_stamm.py) |
+| `fm_stamm` | Excel (.xltx) | Raumstammdaten (Räume) | 1.245 in der Quelle, 1.244 geladen | `fm_stamm` (via ETL-Mapping aus rooms.xltx befüllt, siehe load_fm_stamm.py; eine PK-Dublette wird verworfen) |
 | `k_plz` | CSV | PLZ-Verzeichnis Deutschland | ~34.000 | `k_plz` (via load_k_plz.py) |
 | `fm_rna.json` | JSON | Raumnutzungsarten | ~380 | `fm_rna` (via load_json.py) |
 | `hso_personal.json` | JSON | Personal HSO (anonym.) | ~870 | `hso_personal` (via load_json.py) |
