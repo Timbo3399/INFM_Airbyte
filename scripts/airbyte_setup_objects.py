@@ -205,6 +205,31 @@ class AirbyteApi:
             raise RuntimeError(f"POST /{pfad} -> HTTP {r.status_code}: {r.text[:400]}")
         return r.json()
 
+    def discover_schema(self, source_id: str) -> list:
+        """Schema der Quelle neu einlesen und die entdeckten Streams liefern.
+
+        Noetig, weil Airbyte den Stream-Katalog einer Source zwischenspeichert.
+        Eine Tabelle, die nach der letzten Erkennung entstanden ist, kennt die
+        API nicht: POST /connections antwortet dann mit
+        "No streams found with name [...]".
+
+        Die Public API bietet dafuer nichts an, GET /streams liefert nur den
+        zwischengespeicherten Stand. Deshalb hier die interne Config-API mit
+        disable_cache. Schlaegt der Aufruf fehl, machen wir weiter: fuer
+        unveraenderte Quellen reicht der Cache.
+        """
+        wurzel = self.base.rsplit("/api/", 1)[0]
+        try:
+            r = requests.post(f"{wurzel}/api/v1/sources/discover_schema",
+                              headers=self._headers, timeout=TIMEOUT * 5,
+                              json={"sourceId": source_id, "disable_cache": True})
+            if r.status_code != 200:
+                return []
+            return [s["stream"]["name"]
+                    for s in r.json().get("catalog", {}).get("streams", [])]
+        except requests.RequestException:
+            return []
+
     def workspace_id(self) -> str:
         ws = self.liste("workspaces")
         if not ws:
