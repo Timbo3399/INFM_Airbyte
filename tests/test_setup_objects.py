@@ -1,9 +1,11 @@
-"""Tests fuer die reinen Funktionen in scripts/airbyte_setup_objects.py.
+"""Tests fuer die reinen Funktionen in scripts/airbyte/setup_objects.py.
 
 Kein laufendes Airbyte noetig: getestet werden Credential-Aufloesung,
 .env-Parsing und der Idempotenz-Abgleich gegen bereits vorhandene Objekte.
 """
-import airbyte_setup_objects as a
+import pytest
+
+import setup_objects as a
 
 # Beispielausgabe von `abctl local credentials` mit erfundenen Werten.
 ABCTL_AUSGABE = """
@@ -158,3 +160,91 @@ def test_file_source_setzt_trennzeichen_als_reader_option():
     cfg = a.source_file_config("/local/hso_students.csv", "hso_students", separator="|")
     assert cfg["provider"] == {"storage": "local"}
     assert '"sep": "|"' in cfg["reader_options"]
+
+
+# --- Fallback, wenn Credentials nicht mehr gelten ----------------------------
+#
+# Nach einem 'abctl local uninstall' plus Neuinstallation erzeugt Airbyte neue
+# Client-Credentials. In der .env stehen dann die alten. Weil .env vor abctl
+# kommt, schickte das Skript die alten Werte und bekam "Invalid client id or
+# token" zurueck, was nach einem Tippfehler aussieht und nicht nach veralteten
+# Werten. Deshalb wird jeder Kandidat der Reihe nach ausprobiert.
+
+def test_credential_kandidaten_kommen_in_der_richtigen_reihenfolge():
+    kandidaten = a.credential_kandidaten(
+        {"AIRBYTE_CLIENT_ID": "u", "AIRBYTE_CLIENT_SECRET": "u2"},
+        {"AIRBYTE_CLIENT_ID": "e", "AIRBYTE_CLIENT_SECRET": "e2"},
+        ABCTL_AUSGABE)
+
+    abctl_id, _ = a.parse_abctl_credentials(ABCTL_AUSGABE)
+    assert [k[1] for k in kandidaten] == ["u", "e", abctl_id]
+
+
+def test_credential_kandidaten_nennt_jede_quelle_beim_namen():
+    kandidaten = a.credential_kandidaten(
+        {"AIRBYTE_CLIENT_ID": "u", "AIRBYTE_CLIENT_SECRET": "u2"}, {}, None)
+
+    assert "Umgebung" in kandidaten[0][0]
+
+
+def test_credential_kandidaten_ueberspringt_unvollstaendige_paare():
+    # Nur die Id ohne Secret ist kein brauchbarer Kandidat.
+    kandidaten = a.credential_kandidaten({"AIRBYTE_CLIENT_ID": "u"}, {}, None)
+
+    assert kandidaten == []
+
+
+def test_credential_kandidaten_ohne_jede_quelle_ist_leer():
+    assert a.credential_kandidaten({}, {}, None) == []
+
+
+def test_kurzer_grund_holt_die_kernaussage_aus_der_api_antwort():
+    lang = ('Token-Anfrage fehlgeschlagen (HTTP 400): {"message":"Bad Request",'
+            '"_embedded":{"errors":[{"message":"Invalid client id or token",'
+            '"_embedded":{},"_links":{}}]}}')
+
+    kurz = a.kurzer_grund(SystemExit(lang))
+
+    assert "Invalid client id or token" in kurz
+    assert len(kurz) < 80
+
+
+def test_kurzer_grund_laesst_kurze_meldungen_stehen():
+    assert a.kurzer_grund(SystemExit("Verbindung abgelehnt")) == "Verbindung abgelehnt"
+
+
+def test_erste_funktionierende_nimmt_den_ersten_treffer():
+    versucht = []
+
+    def baue(cid, csec):
+        versucht.append(cid)
+        return f"api-{cid}"
+
+    ergebnis = a.erste_funktionierende([("A", "1", "x"), ("B", "2", "y")], baue)
+
+    assert ergebnis == "api-1"
+    assert versucht == ["1"], "der zweite Kandidat haette nicht geprueft werden duerfen"
+
+
+def test_erste_funktionierende_geht_bei_abgelehnten_credentials_weiter():
+    def baue(cid, csec):
+        if cid == "alt":
+            raise SystemExit("Invalid client id or token")
+        return f"api-{cid}"
+
+    ergebnis = a.erste_funktionierende([("env", "alt", "x"), ("abctl", "neu", "y")], baue)
+
+    assert ergebnis == "api-neu"
+
+
+def test_erste_funktionierende_wirft_wenn_kein_kandidat_durchkommt():
+    def baue(cid, csec):
+        raise SystemExit("Invalid client id or token")
+
+    with pytest.raises(SystemExit):
+        a.erste_funktionierende([("env", "alt", "x")], baue)
+
+
+def test_erste_funktionierende_wirft_bei_leerer_kandidatenliste():
+    with pytest.raises(SystemExit):
+        a.erste_funktionierende([], lambda cid, csec: "api")
