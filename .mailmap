@@ -1,9 +1,0 @@
-# Zusammenfuehrung von Autoren-Identitaeten fuer git shortlog / git log.
-# "Timo" und "Timbo3399" sind dieselbe Person, dazu kommen zwei weitere
-# Mail-Adressen (GitHub-noreply und ein Tippfehler in der privaten Adresse).
-# Ohne diese Datei zeigt "git shortlog -sn" vier Beitragende statt drei.
-
-Timo <timolahres@hotmail.com> Timbo3399 <timolahres@hotmail.com>
-Timo <timolahres@hotmail.com> Timbo3399 <48757588+Timbo3399@users.noreply.github.com>
-Timo <timolahres@hotmail.com> Timo <48757588+Timbo3399@users.noreply.github.com>
-Timo <timolahres@hotmail.com> Timo <timo.lahres@hotmail.com>
