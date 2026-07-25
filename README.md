@@ -152,10 +152,20 @@ INFM_Airbyte/
 │   ├── architektur.md          ← Architektur (Komponenten, Datenfluss, Netz)
 │   ├── zugang.md               ← Zugang zu UI/DBs (inkl. Betreuer-Zugang)
 │   ├── airbyte-setup.md        ← Airbyte installieren & konfigurieren
+│   ├── airbyte_api.md          ← Airbyte Public API (Token, Requests)
 │   ├── etl-prozess.md          ← Runbook: erster ETL-Prozess
 │   ├── testszenarien.md        ← Konkrete Testfälle
+│   ├── anforderungen.md        ← Anforderungen & Umsetzungsstand
+│   ├── bewertung-airbyte.md    ← Abschluss-Bewertung + Empfehlung
+│   ├── call-notes-2026-06-16.md ← Sync-Modi, Messreihen, Editionen
 │   ├── zwischenbericht.md      ← Zwischenbericht (Abgabe 7.6.)
 │   └── betreuer-feedback-2026-06-09.md  ← Betreuer-Feedback + unsere Reaktion
+│
+├── tests/                      ← pytest für die reinen Loader-/Mapping-Funktionen
+│   └── conftest.py in der Wurzel macht scripts/ importierbar
+├── .github/workflows/ci.yml    ← CI: pytest bei jedem PR gegen main
+├── pictures/                   ← Screenshots für die Doku
+├── moodle/                     ← Aufgabenstellung (Kickoff, Szenarien)
 │
 └── scripts/                    ← .ps1 = Windows · .sh = Linux/macOS (gleiche Logik)
     ├── install.ps1 · install.sh        ← Komplett-Setup (DB-Stack + Testdaten)
@@ -170,7 +180,8 @@ INFM_Airbyte/
     ├── load_lookups.py                 ← lädt anredetitel, k_hochschule, k_res
     ├── load_hso_students.py            ← lädt hso_students (quote-bewusster Pipe-Parser)
     ├── load_fm_stamm.py                ← lädt fm_stamm aus rooms.xltx (ETL-Mapping)
-    ├── mapping/                        ← Szenario 4: Account-Generator
+    ├── mapping/                        ← Szenario 4: fill_random_names.py (Namen befüllen)
+    │                                     + generate_accounts.py (Account-Generator)
     └── images/                         ← Szenario 3: BLOB-Im-/Export
 ```
 
