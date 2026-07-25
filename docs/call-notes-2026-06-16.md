@@ -17,6 +17,12 @@ Zusammengeführt aus den Mitschriften von Timo, Isabella und Rebecca.
 
 ## 1. Sync-Funktionsweise
 
+Um die Daten zwischen Quellsystem und Zielsystem zu synchronisieren wird eine cursor basierte Strategie genutzt. Diese basiert auf einem "updated_at" Zeitstempel. Die Datensätze deren Zeitstempel seit dem letzten Sync aktualisiert wurde werden Synchronisiert.
+
+Als Alternative gäbe es Change Data Capture (CDC). Bei CDC werden Änderungen direkt aus den Datenbank Transaktionslogs gelesen (PostgreSQL WAL). Das ermöglicht eine genaue Erfassung von Inserts, Updates und Deletes. Aber es erfordert eine zusätzliche Datenbankkonfiguration (z.b.  aktivierte Loical Replication/Replication Slots) und hat einen hohen administrativen Aufwand.
+
+Für die Hochschulumgebung wurde die cursor basierte Strategie ausgewählt, weil man dafür keine Anpassungen in der Datenbankinfrastruktur machen muss und es sich einfach in bestehende Systeme integrieren lässt. CDC wäre für großskalige Systeme mit hohen Anforderungen an Datenkonsistenz geeignet.
+
 ### Die Phasen eines Syncs
 Ein Airbyte-Sync läuft in festen Phasen ab:
 
