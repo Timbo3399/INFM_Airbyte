@@ -157,9 +157,13 @@ Raw table database `destdb`). Details in [airbyte-setup.md](airbyte-setup.md), K
 
 ## Optional: File-Connector (Flatfile-ETL)
 
-Studierendendaten (`hso_students`) liegen wegen der defekten CSV nur als Flatfile vor
-und werden über den **File-Connector** (`/local/hso_students.csv`, Trennzeichen `|`)
-eingebunden, siehe [airbyte-setup.md](airbyte-setup.md), Kap. 7.
+Studierendendaten (`hso_students`) lassen sich auf zwei Wegen einbinden: über den
+**File-Connector** (`/local/hso_students.csv`, Trennzeichen `|`, siehe
+[airbyte-setup.md](airbyte-setup.md), Kap. 7) und relational aus der Source-DB, in die
+[`load_hso_students.py`](../scripts/load_hso_students.py) alle 5.052 Zeilen lädt. Die
+Datei galt zunächst als defekt; tatsächlich ist sie pipe-getrennt mit Pipes in einem
+gequoteten Feld und mit einem quote-bewussten Parser vollständig lesbar. Für den
+Flatfile-Nachweis ist der File-Connector trotzdem der interessantere Weg.
 
 ![File-Connector, Connector-Auswahl und Formular](../pictures/10-source-file-connector.jpg)
 

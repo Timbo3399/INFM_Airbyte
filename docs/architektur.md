@@ -59,7 +59,7 @@ Die **Befüllung der Source-DB** erfolgt nicht durch Airbyte, sondern vorab durc
 - **Ziel-PostgreSQL auf Port 5434** (statt 5432): Auf vielen Windows-Rechnern belegt ein nativer PostgreSQL-Dienst Port 5432; eine Airbyte-Verbindung über `host.docker.internal:5432` würde dort statt im Container landen. 5434 umgeht den Konflikt zuverlässig.
 - **File-Connector via `local` Storage Provider** (`/local/<datei>.csv`) statt HTTP: Der `source-file`-Connector erzwingt bei „HTTPS: Public Web" eine TLS-Verbindung, ein lokaler HTTP-Server wird damit nicht erreicht. Unter abctl (Kubernetes/kind) sehen die Connector-Pods das Docker-Volume `oss_local_root` **nicht**; stattdessen mountet `setup-airbyte.ps1` das Verzeichnis `sql/source/data` beim Install via `abctl local install --volume …:/local` als `/local/` und aktiviert `JOB_KUBE_LOCAL_VOLUME_ENABLED=true` (Details: [airbyte-setup.md](airbyte-setup.md) Abschnitt 7).
 - **MySQL mit `--local-infile=1`:** vom Airbyte-MySQL-Destination-Connector zum Laden benötigt.
-- **Sync-Modus Cursor (`updatedat`)** statt CDC/Xmin: vermeidet zusätzliche WAL-/Replication-Konfiguration (Vergleich der drei Methoden: [airbyte-setup.md §5](airbyte-setup.md); offene Frage im [Zwischenbericht](zwischenbericht.md)).
+- **Sync-Modus Cursor (`updatedat`)** statt CDC/Xmin: vermeidet zusätzliche WAL-/Replication-Konfiguration (Vergleich der drei Methoden: [airbyte-setup.md §5](airbyte-setup.md), Messreihen in [call-notes-2026-06-16.md](call-notes-2026-06-16.md), Bewertung in [bewertung-airbyte.md](bewertung-airbyte.md)).
 
 ## 6. Datenladung der Source-DB
 
@@ -75,8 +75,8 @@ Schema: `sql/source/00_tables.sql`. Die Daten werden **nach** dem Containerstart
 | `load_hso_students.py` | `hso_students` | pipe-getrennt, gequotetes Feld enthält selbst Pipes |
 | `load_fm_stamm.py` | `fm_stamm` | ETL-Mapping aus `rooms.xltx` (Excel) |
 
-Alle sieben Tabellen liegen damit in der Source-DB. `hso_students` (5.052 Zeilen) und
-`fm_stamm` (1.245 Zeilen) waren zunächst nicht ladbar und wurden nach dem
+Die sieben Loader füllen zusammen zehn Tabellen in der Source-DB. `hso_students`
+(5.052 Zeilen) und `fm_stamm` (1.245 Zeilen) waren zunächst nicht ladbar und wurden nach dem
 Betreuer-Feedback vom 09.06.2026 über die beiden zuletzt genannten Loader ergänzt.
 
 ## 7. Ports & Zugang

@@ -255,14 +255,29 @@ Ein initialer Sync mit dem Mode: **Incremental** entspricht einem **Full refresh
 
 ### Auswertung
 
-Die Messreihen verdeutlichen, dass Airbyte, unabhängig vom Datenvolumen, einen erheblichen **Overhead** aufweist.
-Die Gesamtlaufzeit wird stark von diesem Overhead dominiert. In der Folge erweisen sich Incremental-Strategien bei sehr kleinen Datenmengen als relativ ineffizient: Selbst wenn nur 13 Datensätze übertragen werden, beträgt die reine Stream-Dauer (Replikationszeit) fast 30 Sekunden, was die Gesamtdauer künstlich verlängert.
-Außerdem fällt auf, dass die Gesamtdauer der Streams von 10-20.000 geänderten Datensätzen nahezu stagniert. (ca. 30 Sekunden).
-Bei größeren, sich regelmäßig änderenden Datensätzen ist die Incremental Strategie jedoch sinnvoll, um das Netzerk vor Überlastung zu schützen und die Performance insgesamt zu erhöhen.
+Die Messreihen verdeutlichen, dass Airbyte unabhängig vom Datenvolumen einen erheblichen **Overhead** aufweist.
+Die Gesamtlaufzeit wird stark von diesem Overhead dominiert. In der Folge erweisen sich Incremental-Strategien bei sehr kleinen Datenmengen als relativ ineffizient: Selbst wenn nur 10 Datensätze übertragen werden, beträgt die reine Stream-Dauer (Replikationszeit) über 27 Sekunden, was die Gesamtdauer künstlich verlängert.
+Außerdem fällt auf, dass die Gesamtdauer der Streams von 10 bis 20.000 geänderten Datensätzen nahezu stagniert (rund 30 Sekunden).
+Bei größeren, sich regelmäßig ändernden Datensätzen ist die Incremental Strategie sinnvoll, um das Netzwerk vor Überlastung zu schützen und die Performance insgesamt zu erhöhen.
 
-Die Strategie: **Incremental/Append** weißt insgesamt die geringste Streamdauer (Replication) und geringste Gesamtdauer insgesamt auf.
-Außerdem ist nicht nur die Größe entscheidend, sondern auch die Anzahl der Spalten einer Tabelle, denn bei einer größeren Anzahl
-an Spalten und nahezu äquivalenter Gesamtgröße dauert der Stream insgesamt dennoch länger.
+**Incremental/Append** hat in unserer Reihe die kürzesten Laufzeiten. Das liegt aber daran, dass dabei
+weniger Daten bewegt werden, nicht daran, dass der Modus schneller arbeitet. Bei gleicher Datenmenge
+dreht sich das Bild sogar leicht: für 100.000 Datensätze braucht Full refresh/Overwrite 38,08 s,
+Incremental/Append 39,42 s. Der Gewinn von Incremental liegt also im kleineren Delta.
+
+Für Szenario 5 ist die Zeile darüber wichtiger als der Vergleich Full refresh gegen Incremental:
+**Incremental/Append + Deduped** braucht bei 75.000 Datensätzen 82,47 s, der gleiche Lauf ohne
+Deduplizierung 39,67 s. Die Deduplizierung, die wir für `hso_user` brauchen, kostet also ungefähr
+das Doppelte.
+
+Neben der Datenmenge spielt auch die Spaltenzahl eine Rolle. Bei nahezu gleicher Gesamtgröße dauert
+ein Stream mit mehr Spalten länger.
+
+Zwei Einschränkungen zu den Zahlen. Der Wert für 50.000 Datensätze (49,53 s) liegt über dem für
+75.000 (39,67 s) und 100.000 (39,42 s) und fällt damit aus der Reihe; eine Erklärung dafür haben wir
+nicht. Und jede Zeile ist eine Einzelmessung ohne Wiederholung. Unterschiede von wenigen Sekunden
+sollte man deshalb nicht überbewerten, belastbar sind nur die großen Effekte: der Grundoverhead von
+rund 27 Sekunden und die Verdopplung durch Deduped.
 
 
 (TODO: Auswahl der Sync-Modes pro (realer) Tabelle)

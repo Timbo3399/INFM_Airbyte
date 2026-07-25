@@ -29,26 +29,27 @@ Mit folgendem Request, kann sich der Token programmatisch geholt werden.
 
 Die **Client-ID** und das **Client-Secret** müssen dafür zunächst aus dem Applications Abschnitt ausgelesen werden.
 
-```json
+```bash
 curl --request POST \
      --url http://localhost:8000/api/public/v1/applications/token \
      --header 'accept: application/json' \
      --header 'content-type: application/json' \
-     --data '
-{
+     --data '{
   "client_id": "<YOUR_CLIENT_ID>",
   "client_secret": "<YOUR_CLIENT_SECRET>",
   "grant-type": "client_credentials"
-}
+}'
 ```
 
 Bei Erfolg hält man einen Response mit dem Access-Token in folgender Form:
 
-`{
+```json
+{
   "access_token": "<YOUR_ACCESS_TOKEN>",
   "token_type": "Bearer",
   "expires_in": 900
-}`
+}
+```
 
 **Der Token expired nach 15 Minuten. Anschließend muss über die UI oder die Konsole erst ein neuer Token generiert werden.**
 
@@ -58,7 +59,7 @@ Der generierte Access-Token muss anschließend für alle Requests zur Authentifi
 
 **Im Folgenden wird ein GET-Request durchgeführt, um alle Airbyte Source-Connectors aufzulisten.**
 
-```json
+```bash
 curl --request GET \
      --url 'http://localhost:8000/api/public/v1/sources' \
      --header 'accept: application/json' \

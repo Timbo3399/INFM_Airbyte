@@ -118,65 +118,29 @@ CREATE TABLE fm_raeume (
 
 **Ziel:** >1.000 Bilder per API abrufen, als BLOB in DB speichern; danach aus DB exportieren.
 
-**API:** https://picsum.photos/200 (liefert zufällige Bilder als JPEG)
+**API:** https://picsum.photos/ (liefert zufällige Bilder als JPEG)
 
-**Teilaufgabe A, Bilder in DB laden:**
+**Teilaufgabe A, Bilder in DB laden:** [`scripts/images/load_images.py`](../scripts/images/load_images.py)
 
-```python
-# scripts/images/load_images.py
-import requests, psycopg2, uuid
-
-conn = psycopg2.connect(
-    host="localhost", port=5433,
-    dbname="sourcedb", user="sourceuser", password="sourcepassword"
-)
-cur = conn.cursor()
-cur.execute("""
-    CREATE TABLE IF NOT EXISTS hso_images (
-        image_id   SERIAL PRIMARY KEY,
-        ext_id     VARCHAR(50),
-        data       BYTEA,
-        created_at TIMESTAMP DEFAULT NOW()
-    )
-""")
-
-for i in range(1, 1001):
-    resp = requests.get(f"https://picsum.photos/id/{i}/200/200", timeout=10)
-    if resp.status_code == 200:
-        cur.execute(
-            "INSERT INTO hso_images (ext_id, data) VALUES (%s, %s)",
-            (str(i), psycopg2.Binary(resp.content))
-        )
-    if i % 50 == 0:
-        conn.commit()
-        print(f"{i} Bilder geladen...")
-
-conn.commit()
-cur.close()
-conn.close()
+```powershell
+python scripts/images/load_images.py
 ```
 
-**Teilaufgabe B, Bilder aus DB exportieren:**
+Legt `hso_images` an (`image_id SERIAL`, `ext_id UNIQUE`, `data BYTEA`) und lädt 1.100 Bilder.
 
-```python
-# scripts/images/export_images.py
-import psycopg2, os
+> **Warum Seed-URLs und nicht `/id/<n>`?** Der erste Ansatz über `https://picsum.photos/id/<n>/200/200`
+> lieferte für viele IDs 404, wir landeten damit deutlich unter den geforderten 1.000 Bildern.
+> `https://picsum.photos/seed/hso<n>/200/200` antwortet dagegen immer mit 200 und ist zusätzlich
+> deterministisch: derselbe Seed liefert dasselbe Bild.
 
-conn = psycopg2.connect(
-    host="localhost", port=5433,
-    dbname="sourcedb", user="sourceuser", password="sourcepassword"
-)
-cur = conn.cursor()
-cur.execute("SELECT image_id, ext_id, data FROM hso_images")
+**Teilaufgabe B, Bilder aus DB exportieren:** [`scripts/images/export_images.py`](../scripts/images/export_images.py)
 
-os.makedirs("data/images", exist_ok=True)
-for image_id, ext_id, data in cur.fetchall():
-    with open(f"data/images/{ext_id}.png", "wb") as f:
-        f.write(bytes(data))
-
-print("Export abgeschlossen.")
-conn.close()
+```powershell
+python scripts/images/export_images.py
 ```
+
+Schreibt die BLOBs als `<ext_id>.png` nach `data/images/`. Der Dateiname folgt der Aufgabenstellung;
+picsum liefert JPEG-Daten, die Endung sagt also nichts über das Format aus.
 
 **Airbyte-Evaluation:** Kann Airbyte BLOB-Felder synchronisieren?
 - Source: `source-postgres` Tabelle `hso_images`
@@ -189,31 +153,33 @@ conn.close()
 
 **Ziel:** Anonymisierte Daten mit realistischen Werten befüllen; Account-IDs generieren; in neue Tabellen schreiben.
 
-**Account-Generierungs-Logik.** Referenz-Artefakt ist `data/js/hso_accountgenerator.js`
-(HSO-Original aus HISinOne, **wird nicht ausgeführt**; produktiv nach
-`scripts/mapping/generate_accounts.py` portiert):
+**Schritt 1, Namen befüllen:** [`scripts/mapping/fill_random_names.py`](../scripts/mapping/fill_random_names.py)
+
+Die Anonymisierung hat die Namensfelder komplett geleert: `firstname` und `surname` sind in
+allen 5.052 Zeilen von `hso_students` leer, `vorname` und `nachname` in allen 870 Zeilen von
+`hso_personal`. Ohne Namen erzeugt der Account-Generator für keine einzige Zeile eine `user_id`.
+Das Skript füllt sie deterministisch aus einem Namenspool, abgeleitet aus `mtknr` bzw. `id`,
+sodass ein zweiter Lauf dieselben Namen liefert.
+
+**Schritt 2, Accounts generieren:** [`scripts/mapping/generate_accounts.py`](../scripts/mapping/generate_accounts.py)
+
+Referenz-Artefakt ist `data/js/hso_accountgenerator.js` (HSO-Original aus HISinOne, wird nicht
+ausgeführt). Die Spec dort lautet:
+
 ```
-account = (Vorname[0] + Nachname).toLowerCase()[0:8]
+account = maxLength-8(Vorname[0] + Nachname + (Anzahlaccounts_mit_dem_Schema + 1))
           (Umlaute ersetzen: ä→ae, ö→oe, ü→ue, ß→ss)
 ```
 
-**Python-Implementierung der Account-Logik:**
+Der Zähler in der Klammer ist die Kollisionsbehandlung, und die Längenbegrenzung gilt für den
+gesamten Namen. Ist `mmusterm` vergeben, folgt also `mmuster2`, ab dem zehnten `mmuste10`.
+Über beide Tabellen zusammen ergibt das 5.922 eindeutige Accounts. Geschrieben werden
+`user_id` und die daraus abgeleitete Hochschul-E-Mail, dazu wird `updatedat` gesetzt, damit ein
+Incremental-Sync über den Cursor die Änderung sieht.
 
-```python
-# scripts/mapping/generate_accounts.py
-import re, unicodedata
-
-UMLAUT_MAP = str.maketrans({'ä':'ae','ö':'oe','ü':'ue','ß':'ss',
-                             'Ä':'ae','Ö':'oe','Ü':'ue'})
-
-def generate_account(firstname: str, surname: str) -> str:
-    raw = (firstname[:1] + surname).lower()
-    raw = raw.translate(UMLAUT_MAP)
-    # Akzentzeichen normalisieren
-    raw = unicodedata.normalize('NFD', raw)
-    raw = ''.join(c for c in raw if unicodedata.category(c) != 'Mn')
-    raw = re.sub(r'[^a-z]', '', raw)
-    return raw[:8]
+```powershell
+python scripts/mapping/fill_random_names.py
+python scripts/mapping/generate_accounts.py
 ```
 
 **Airbyte Custom Transformation:**
@@ -225,7 +191,7 @@ CREATE TABLE hso_students_mapped (
     mtknr      INTEGER,
     firstname  VARCHAR(100),
     surname    VARCHAR(100),
-    user_id    VARCHAR(8),   -- generierter Account
+    user_id    VARCHAR(20),  -- generierter Account, wie in hso_students
     email      VARCHAR(255),
     stg        VARCHAR(20),
     fakult     VARCHAR(100)
@@ -253,8 +219,17 @@ CREATE TABLE hso_user (
 
 **Sync-Strategie:**
 - Airbyte Connection: `source-postgres.hso_students` → `dest-mysql.hso_user` (Incremental | Append+Dedup)
-- Cursor-Feld: `updatedat`
-- Primary Key: `mtknr` / `sva_persid`
+- Cursor-Feld: `updatedat` (in beiden Quelltabellen vorhanden und indiziert)
+- Primary Key: `user_id`. Er ist über Studierende und Personal hinweg eindeutig, siehe Szenario 4.
+  Tabellenintern eindeutig sind auch `hso_students.mtknr` (5.052 verschiedene Werte) und
+  `hso_personal.id` (Primärschlüssel). Als gemeinsamer Schlüssel in `hso_user` taugen sie
+  trotzdem nicht: die Nummernkreise stammen aus verschiedenen Systemen (mtknr 153.026 bis
+  184.213, id 3 bis 8.542). Sie überschneiden sich derzeit zwar nicht, garantiert ist das
+  aber nicht.
+
+> **Aufwand beachten:** Der Dedup-Modus kostet in unseren Messungen etwa das Doppelte an
+> Laufzeit gegenüber Incremental/Append ohne Dedup (82,47 s statt 39,67 s bei 75.000 Sätzen,
+> siehe [call-notes-2026-06-16.md](call-notes-2026-06-16.md)).
 
 **Änderungs-Test:**
 ```sql
@@ -282,7 +257,7 @@ Für das Bereitstellen einer REST-API eignet sich ein separater Dienst:
 
 ```yaml
 postgrest:
-  image: postgrest/postgrest
+  image: postgrest/postgrest:v12.2.3
   container_name: hso_postgrest
   environment:
     PGRST_DB_URI: postgres://destuser:destpassword@dest-postgres:5432/destdb
