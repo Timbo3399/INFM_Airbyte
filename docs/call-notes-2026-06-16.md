@@ -1,4 +1,4 @@
-# Call-Notizen & Themensammlung — 16.06.2026
+# Call-Notizen und Themensammlung, 16.06.2026
 
 Mitschriften aus dem Call, ausformuliert und thematisch geordnet. Bezieht sich auf
 das lokale Airbyte-Setup (`abctl`/kind, Source-PostgreSQL → Ziel-PostgreSQL & MySQL,
@@ -17,20 +17,26 @@ Zusammengeführt aus den Mitschriften von Timo, Isabella und Rebecca.
 
 ## 1. Sync-Funktionsweise
 
+Um die Daten zwischen Quellsystem und Zielsystem zu synchronisieren wird eine cursor basierte Strategie genutzt. Diese basiert auf einem "updated_at" Zeitstempel. Die Datensätze deren Zeitstempel seit dem letzten Sync aktualisiert wurde werden Synchronisiert.
+
+Als Alternative gäbe es Change Data Capture (CDC). Bei CDC werden Änderungen direkt aus den Datenbank Transaktionslogs gelesen (PostgreSQL WAL). Das ermöglicht eine genaue Erfassung von Inserts, Updates und Deletes. Aber es erfordert eine zusätzliche Datenbankkonfiguration (z.b.  aktivierte Loical Replication/Replication Slots) und hat einen hohen administrativen Aufwand.
+
+Für die Hochschulumgebung wurde die cursor basierte Strategie ausgewählt, weil man dafür keine Anpassungen in der Datenbankinfrastruktur machen muss und es sich einfach in bestehende Systeme integrieren lässt. CDC wäre für großskalige Systeme mit hohen Anforderungen an Datenkonsistenz geeignet.
+
 ### Die Phasen eines Syncs
 Ein Airbyte-Sync läuft in festen Phasen ab:
 
-1. **Trigger** — Start per Zeitplan (Cron), manuell oder über die API. Zuerst wird
+1. **Trigger.** Start per Zeitplan (Cron), manuell oder über die API. Zuerst wird
    `check` an Source- *und* Destination-Connector aufgerufen (stehen beide Verbindungen?).
-2. **Read (Extract)** — Der Source-Connector liest die Daten; jeder Datensatz wird zu
+2. **Read (Extract).** Der Source-Connector liest die Daten; jeder Datensatz wird zu
    einer `AirbyteRecordMessage` (JSON). Der Sync-Modus bestimmt, *was* gelesen wird.
-3. **Transfer (Plattform)** — Airbyte puffert und batcht die Records. Hier findet
+3. **Transfer (Plattform).** Airbyte puffert und batcht die Records. Hier findet
    **keine** Transformation statt (ELT-Prinzip: Daten bleiben roh).
-4. **Write (Load)** — Der Destination-Connector schreibt zunächst in eine
+4. **Write (Load).** Der Destination-Connector schreibt zunächst in eine
    **Raw-Tabelle** (`_airbyte_raw_…`) mit JSON-Blob + Metadaten (Ladezeit, Hash).
-5. **Typing & Deduping** — Die Raw-Daten werden in die finale, typisierte Tabelle
+5. **Typing und Deduping.** Die Raw-Daten werden in die finale, typisierte Tabelle
    überführt; bei Dedup-Modus werden Duplikate über den Primary Key entfernt.
-6. **State / Checkpoint** — Bei Incremental wird der Fortschritt (z. B. höchster
+6. **State und Checkpoint.** Bei Incremental wird der Fortschritt (z. B. höchster
    `updatedAt`-Wert) gespeichert, auch zwischendurch.
 
 **Lesen findet außerdem parallel zum Schreiben statt**
@@ -38,7 +44,7 @@ Ein Airbyte-Sync läuft in festen Phasen ab:
 Airbyte fügt außerdem weitere Airbyte_Metadaten in das Ziel ein bzw. updatet sie:
 _airbyte_raw_id, _airbyte_extracted_at und _airbyte_meta, _airbyte_generation_id
 
-> ⚠️ Problem: csv-Import --> Source-DB --> Dest-DB
+> Problem: csv-Import --> Source-DB --> Dest-DB
 > schlägt fehl, da Airbyte dann versucht seine Metadaten erneut einzufügen!
 > Daher sollte direkt ohne Umwege ins Ziel kopiert werden.
 > Problem: durch den fehlenden Cursor stehen nur noch die Full refresh Sync-Methoden zur Auswahl
@@ -50,10 +56,10 @@ Hängt vom **Sync-Modus** ab:
 
 | Modus | Liest jedes Mal alles? |
 |---|---|
-| Full Refresh – Overwrite | **Ja** — Ziel wird geleert und komplett neu geladen |
-| Full Refresh – Append | **Ja** — alles wird erneut angehängt (Snapshots/Historie) |
-| Incremental – Append | **Nein** — nur Sätze neuer als der Cursor |
-| Incremental – Append + Dedup | **Nein** — nur Neues, dedupliziert per PK (häufigster Fall) |
+| Full Refresh / Overwrite | **Ja**, Ziel wird geleert und komplett neu geladen |
+| Full Refresh / Append | **Ja**, alles wird erneut angehängt (Snapshots/Historie) |
+| Incremental / Append | **Nein**, nur Sätze neuer als der Cursor |
+| Incremental / Append + Dedup | **Nein**, nur Neues, dedupliziert per PK (häufigster Fall) |
 
 ### Wenn ein Sync abbricht
 - **Transaktionssicher:** kein halb-importierter, kaputter Zustand in der finalen Tabelle.
@@ -61,7 +67,7 @@ Hängt vom **Sync-Modus** ab:
   `ToDo:` genaue Anzahl/Logik der Retry-Attempts je Airbyte-Version verifizieren.
 - **Checkpointing (nur Incremental):** der nächste Lauf macht ab dem letzten Checkpoint
   weiter, nicht von vorn.
-- **Full Refresh:** kein Teil-Aufholen — der nächste Lauf macht alles neu (robust, aber teuer).
+- **Full Refresh:** kein Teil-Aufholen, der nächste Lauf macht alles neu (robust, aber teuer).
 - Pro Connection konfigurierbar, ob bei wiederholten Fehlern automatisch deaktiviert wird.
 
 ### Paketgröße / Batching
@@ -93,25 +99,25 @@ Wege für Reihenfolge/Abhängigkeiten:
 | dbt nach dem Sync | Wenn die zweite Stufe eine Transformation in der Ziel-DB ist (kein weiterer Sync). |
 
 ### Custom Code zum Daten-Manipulieren
-Airbyte ist **ELT**, nicht ETL — keine freien Code-Snippets mitten im Sync. Möglichkeiten:
+Airbyte ist **ELT**, nicht ETL. Freie Code-Snippets mitten im Sync gibt es nicht. Möglichkeiten:
 
 | Möglichkeit | Was geht | Was nicht |
 |---|---|---|
-| Mappings (Connection-UI) ⚠️ **Paid (ab Plus)** | Felder umbenennen, hashen/verschlüsseln, Zeilen filtern | nicht in Core; keine freie Logik / Berechnungen |
+| Mappings (Connection-UI), **kostenpflichtig ab Plus** | Felder umbenennen, hashen/verschlüsseln, Zeilen filtern | nicht in Core; keine freie Logik / Berechnungen |
 | Connector Builder / Low-Code CDK | eigene Quell-Connectoren (Extraktion) | keine Ziel-Transformation |
 | dbt (nach dem Load) | beliebige SQL-Transformationen | externes Tool, separat aufzusetzen |
 
 > Unsere Python-Loader (`demojibake`, `normalize`, `generate_account`) sind faktisch
-> unsere Custom-Transformation — bewusst **vor** Airbyte, weil die Roh-CSVs unsauber sind.
+> unsere Custom-Transformation, bewusst **vor** Airbyte, weil die Roh-CSVs unsauber sind.
 
 ---
 
 ## 3. Eigene Connectoren
 
 ### Drei Ebenen (einfach → mächtig)
-1. **Connector Builder** (Airbyte-UI, kein Code) — für REST-APIs; direkt in der UI testbar.
-2. **Low-Code CDK** (`manifest.yaml`) — deklarativ, versionierbar im Git.
-3. **Python CDK** (voller Code) — für Nicht-REST: Datenbanken, SOAP, exotische Formate.
+1. **Connector Builder** (Airbyte-UI, kein Code) für REST-APIs, direkt in der UI testbar.
+2. **Low-Code CDK** (`manifest.yaml`), deklarativ und versionierbar im Git.
+3. **Python CDK** (voller Code) für Nicht-REST: Datenbanken, SOAP, exotische Formate.
 
 ### Aufbau jedes Connectors
 Jeder Connector läuft als **Docker-Image** und implementiert vier Kommandos:
@@ -140,7 +146,7 @@ Definition haben.
 
 
 - **Plattform-Logs:** `kubectl logs -n airbyte-abctl <pod>` (`kubectl get pods -n airbyte-abctl`).
-  `ToDo:` echten Namespace-Namen prüfen (`kubectl get namespaces`) — `airbyte-abctl` ist nicht sicher.
+  `ToDo:` echten Namespace-Namen prüfen (`kubectl get namespaces`), `airbyte-abctl` ist nicht sicher.
 - **DB-Logs:** `docker compose logs source-postgres` / `dest-postgres` (`-f` für live).
 - **Unsere Skripte:** aktuell nur `print()` auf die Konsole, kein File-Logging.
   → Möglicher Verbesserungspunkt: `logging` mit Zeitstempel + Logfile.
@@ -165,6 +171,88 @@ Definition haben.
 - **Ziel-DB:** `EXPLAIN ANALYZE` für langsame Abfragen; Indizes prüfen
   (z. B. Index auf `updatedat` in `load_json.py` für den Cursor).
 
+## Performance pro Sync-Strategie:
+
+### Testvorbereitung: 
+
+Zur Evaluation der **Full Refresh-Strategien** wurde ein Stream mit den Tabellen fm_gebaeude (25 Datensätze) und k_plz (34.172 Datensätze) mit einer Gesamtgröße von 5.331.779 Bytes (~5,33 MB) angelegt.
+
+Für die **Incremental-Strategien** wird zwingend ein Cursor-Feld benötigt, bei dem neuere Datensätze einen fortlaufend höheren Wert aufweisen. Die bereits existente Tabelle: *hso_students* hat ideale Bedingungen für die Incremental-Strategien. Da sie jedoch nur einen sehr kleinen Datensatz von ca. 5.000 Zeilen enthält ist sie für die Tests nicht weiter geeignet. Daher wurde zusätzlich ein Datensatz mit 100.000 records (~6,65 MB) erstellt und die Spalte updated_at als Cursor gewählt, um die beiden Hauptstrategien (Full refresh und Incremental) noch besser vergleichen zu können. Hierfür wurde die Datei "sql/source/data/hso_students_large.csv" angelegt. Dies erlaubt inkrementelle Tests mit einer steigenden Anzahl geänderter Datensätze, um realistische Simulationsdurchläufe durchführen zu können.
+
+Alle Daten werden von Source PostgreSQL nach Destination PostgreSQL gesynced.
+
+Timebetween steht dabei für **meanSecondsBetweenStateMessageEmittedandCommitted**, was der durchschnittlichen Latenz im Puffer entspricht.
+
+### 1. **Vergleich der Sync-Modes**
+
+In einem ersten Test sollen **alle Sync-Strategien mit jeweils einer ähnlichen Datenlast verglichen** werden und dabei auch der Overhead von Airbyte näher untersucht werden.
+Für die Full refresh Methoden wurden jeweils leicht unterschiedliche Daten verwendet wie für die Incremental Strategien (siehe Testvorbereitung).
+
+
+| Sync mode | Datenmenge | Gesamtdauer Stream (Replication) | Destination Write Time | Source Read Time | TimeBetween | Durchsatz-Geschwindigkeit | Gesamtdauer (bis in UI sichtbar)|
+|---|---|---|---|---|---|---|---|
+| Full refresh/Overwrite | ~34.200 (5,33 MB) | 36,36 s | 36,18 s | 25,1 s | 11 s | 0,14 MB/s | 104 s |
+| Full refresh/Append | ~34.200 (5,33 MB) | 48,88 s| 48,4 s | 36,0 s | 17 s | 0,11 MB/s |96 s |
+| Full refresh/Overwrite + Deduped | ~34.200 (5,33 MB) | 40,93 s | 29,07 s | 40,57 s | 16 s| 0,13 MB/s| 68 s|
+| Incremental/Append + Deduped | 75.000 (~5,11 MB) | 82,47s | 82,08s | 40,23s | 16 s | 0,06176 MB/s | 82,66s |
+| Incremental/Append | 75.000 (~5,11 MB) | 39,67s | 27,96s  | 39,47s | 11s | 0,12818 MB/s | 39,83s |
+| Full refresh/Overwrite | 100.000 (~6,65 MB) | 38,08 s | 25,66 s | 37,70 s  | 12s | 0,175 MB/s | 38,24 s |
+
+
+![Performance Sync-Modes](../pictures/15-performance.png)
+
+### 2. **Performance der Incremental/Append Strategie mit unterschiedlicher Datenlast**
+
+In einem zweiten Test soll außerdem untersucht werden, wie sich die **Performance der Incremental/Append Strategie**
+bei einer aufsteigenden (geänderten) Datenlast verhält und wie sich dies zur Full refresh/Overwrite Methode unterscheidet, bei der der gesamte Datensatz unabhängig seiner Änderungen gesynced wird.
+
+
+| Sync mode | Datenmenge | Gesamtdauer Stream (Replication) | Source Read Time  | Destination Write Time| TimeBetween | Durchsatz-Geschwindigkeit | Gesamtdauer (bis in UI sichtbar)|
+|---|---|---|---|---|---|---|---|
+| Full refresh/Overwrite | 100.000 (~6,65 MB) | 38,08 s | 25,66 s | 37,70 s  | 12s | 175 KB/s | 38,24 s |
+| Incremental/Append | 10 (~0,61 kB) | 27,42 s | 16,62 s  | 27,17 s | 10s |  0,022 KB/s| 27,56s |
+| Incremental/Append | 100 (~6,23 kB)|  27,20 s | 16,57 s  | 26,93 s | 10 s  | 0,228 KB/s| 27,35 s |
+| Incremental/Append | 1.000 (~64,24 kB) | 27,30 s | 16,70 s  | 27,07s  | 10 s | 2,34 KB/s | 27,46 s |
+| Incremental/Append | 10.000 (~661,90 kB) | 30,60s | 19,67s  | 30,34s  | 10s | 21,52 KB/s | 30,76s |
+| Incremental/Append | 20.000 (~1.345,50 kB) | 32,41s  | 21,48s  | 32,15s | 10s | 41,300 KB/s | 32,58s  |
+| Incremental/Append | 50.000 (~3.396,28 kB) | 49,53s | 35,70s  | 47,57s  | 10s | 68,380 KB/s  | 49,67s |
+| Incremental/Append | 75.000 (~5.105,26 kB) | 39,67s | 27,96s  | 39,47s | 11s | 128,180 KB/s | 39,83s |
+| Incremental/Append | 100.000 (~6.814,25 kB) | 39,42s |  26,80s | 39,13s  | 10s | 172,08 KB/s | 39,60s |
+
+Ein initialer Sync mit dem Mode: **Incremental** entspricht einem **Full refresh**
+
+![Performance Full refresh vs. Incremental](../pictures/16_Incrementalvergleich.png)
+
+### Auswertung
+
+Die Messreihen verdeutlichen, dass Airbyte unabhängig vom Datenvolumen einen erheblichen **Overhead** aufweist.
+Die Gesamtlaufzeit wird stark von diesem Overhead dominiert. In der Folge erweisen sich Incremental-Strategien bei sehr kleinen Datenmengen als relativ ineffizient: Selbst wenn nur 10 Datensätze übertragen werden, beträgt die reine Stream-Dauer (Replikationszeit) über 27 Sekunden, was die Gesamtdauer künstlich verlängert.
+Außerdem fällt auf, dass die Gesamtdauer der Streams von 10 bis 20.000 geänderten Datensätzen nahezu stagniert (rund 30 Sekunden).
+Bei größeren, sich regelmäßig ändernden Datensätzen ist die Incremental Strategie sinnvoll, um das Netzwerk vor Überlastung zu schützen und die Performance insgesamt zu erhöhen.
+
+**Incremental/Append** hat in unserer Reihe die kürzesten Laufzeiten. Das liegt aber daran, dass dabei
+weniger Daten bewegt werden, nicht daran, dass der Modus schneller arbeitet. Bei gleicher Datenmenge
+dreht sich das Bild sogar leicht: für 100.000 Datensätze braucht Full refresh/Overwrite 38,08 s,
+Incremental/Append 39,42 s. Der Gewinn von Incremental liegt also im kleineren Delta.
+
+Für Szenario 5 ist die Zeile darüber wichtiger als der Vergleich Full refresh gegen Incremental:
+**Incremental/Append + Deduped** braucht bei 75.000 Datensätzen 82,47 s, der gleiche Lauf ohne
+Deduplizierung 39,67 s. Die Deduplizierung, die wir für `hso_user` brauchen, kostet also ungefähr
+das Doppelte.
+
+Neben der Datenmenge spielt auch die Spaltenzahl eine Rolle. Bei nahezu gleicher Gesamtgröße dauert
+ein Stream mit mehr Spalten länger.
+
+Zwei Einschränkungen zu den Zahlen. Der Wert für 50.000 Datensätze (49,53 s) liegt über dem für
+75.000 (39,67 s) und 100.000 (39,42 s) und fällt damit aus der Reihe; eine Erklärung dafür haben wir
+nicht. Und jede Zeile ist eine Einzelmessung ohne Wiederholung. Unterschiede von wenigen Sekunden
+sollte man deshalb nicht überbewerten, belastbar sind nur die großen Effekte: der Grundoverhead von
+rund 27 Sekunden und die Verdopplung durch Deduped.
+
+
+(TODO: Auswahl der Sync-Modes pro (realer) Tabelle)
+
+---
 
 ## 5. SDK, Marketplace & Ideen
 
@@ -180,7 +268,7 @@ Community/Marketplace) sind kostenlos. Kostenpflichtig sind nur die **Cloud-/Pai
 entstehen (bezahlte API-Tiers).
 
 ### Creative Connections (Demo-Ideen)
-Externe Live-Daten als Ergänzung zu den HSO-Daten — ideal: freie APIs **ohne Key**:
+Externe Live-Daten als Ergänzung zu den HSO-Daten. Ideal sind freie APIs **ohne Key**:
 
 | Thema | API | Key nötig? |
 |---|---|---|
@@ -192,9 +280,9 @@ Externe Live-Daten als Ergänzung zu den HSO-Daten — ideal: freie APIs **ohne 
 | Strommarkt EU | ENTSO-E / Electricity Maps | ja |
 
 > Empfehlung für eine Demo: Frankfurter (Wechselkurse) **oder** Energy-Charts (Green IT)
-> im Connector Builder nachbauen — beide ohne Key, ~10 Min., zeigt externe Daten im Fluss.
+> im Connector Builder nachbauen. Beide brauchen keinen Key, dauern rund 10 Minuten zeigt externe Daten im Fluss.
 
-`ToDo:` „Key nötig?"-Spalte vor der Nutzung prüfen — API-Bedingungen/Rate-Limits können
+`ToDo:` „Key nötig?"-Spalte vor der Nutzung prüfen, denn API-Bedingungen und Rate-Limits können
 sich ändern (v. a. Energy-Charts, CoinGecko, Frankfurter).
 
 ---
@@ -206,13 +294,13 @@ nächsten Schritte relevant:
 
 - **CDC vs. Cursor:** Wir nutzen bewusst Cursor (`updatedat`) statt CDC/Xmin, um
   zusätzliche WAL-/Replication-Konfiguration zu vermeiden (siehe
-  [architektur.md §5](architektur.md)). CDC erkennt auch *Löschungen* — Cursor nicht.
+  [architektur.md §5](architektur.md)). CDC erkennt auch *Löschungen*, der Cursor nicht.
   Für eine vollständige Sync-Strategie-Doku relevant.
 - **Schema-Änderungen (Schema Drift):** Wenn sich Quellspalten ändern, kann Airbyte
-  pro Connection automatisch propagieren oder den Sync zur Bestätigung anhalten —
+  pro Connection automatisch propagieren oder den Sync zur Bestätigung anhalten.
   Verhalten sollte bewusst gesetzt werden.
   `ToDo:` genaue Optionen/Bezeichnungen im Connection-Setting eurer Version prüfen.
-- **Scheduling:** Sync-Intervall pro Connection (Cron) vs. manueller/API-Trigger —
+- **Scheduling:** Sync-Intervall pro Connection (Cron) vs. manueller oder API-Trigger,
   zusammen mit dem Verkettungs-Thema (Abschnitt 2) zu entscheiden.
 - **Idempotenz:** Unsere Loader sind idempotent (`TRUNCATE` + Reload); bei Airbyte
   übernimmt das der Sync-Modus (Overwrite vs. Append+Dedup).
@@ -223,9 +311,9 @@ nächsten Schritte relevant:
 
 ### Airbyte-Angebot: Free vs. Paid (Editionen)
 Relevant ist die Produktlinie **„Data Replication"** (es gibt daneben „Airbyte Agents",
-ein separates KI-Produkt — für uns nicht relevant). Wir nutzen die **kostenlose,
+ein separates KI-Produkt, für uns nicht relevant). Wir nutzen die **kostenlose,
 self-hosted** Edition **Core** (`abctl`/kind).
-Stand: airbyte.com/pricing, abgerufen 16.06.2026 — Preise können sich ändern.
+Stand: airbyte.com/pricing, abgerufen 16.06.2026. Preise können sich ändern.
 
 | Edition | Kosten | Hosting | Preismodell |
 |---|---|---|---|
@@ -236,19 +324,19 @@ Stand: airbyte.com/pricing, abgerufen 16.06.2026 — Preise können sich ändern
 | **Enterprise Flex** | individuell | Cloud (managed) | kapazitätsbasiert |
 
 **Was in der kostenlosen Edition (Core) enthalten ist:**
-- **600+ Connectoren** — keine Paywall
+- **600+ Connectoren**, keine Paywall
 - **Change Data Capture (CDC)** und **Schema-Propagation**
 - Connector Builder, Low-Code & Python CDK
 - Alle Sync-Modi (Full Refresh, Incremental, Dedup), Scheduling, API
 - Keine Nutzungs-/Volumengrenzen
 
 **Was nur in den Paid-Tiers dazukommt:**
-- **Managed Hosting** (kein eigener Betrieb nötig) — ab *Standard*
-- **15-Minuten-Syncs** und **Custom Mappings** — ab *Plus* ⚠️ (Mappings sind **nicht** in Core!)
-- **SSO, RBAC, mehrere Workspaces, Governance, Premium-Support** — ab *Pro*
-- **Erweiterte Data Governance, mehrere Daten-Regionen, Priority-Support** — *Enterprise Flex*
+- **Managed Hosting** (kein eigener Betrieb nötig), ab *Standard*
+- **15-Minuten-Syncs** und **Custom Mappings**, ab *Plus*. Mappings sind also **nicht** in Core.
+- **SSO, RBAC, mehrere Workspaces, Governance, Premium-Support**, ab *Pro*
+- **Erweiterte Data Governance, mehrere Daten-Regionen, Priority-Support**, nur *Enterprise Flex*
 
-> **Fazit für uns:** Funktional reicht **Core** vollständig aus — sogar CDC und alle
+> **Fazit für uns:** Funktional reicht **Core** vollständig aus, sogar CDC und alle
 > 600+ Connectoren sind kostenlos. Der Paid-Mehrwert liegt im Betrieb (Managed Hosting,
 > Support, Governance) und in Komfort-Features (Custom Mappings, 15-Min-Syncs), nicht in
 > den Connectoren oder Kern-Sync-Funktionen.
@@ -267,15 +355,15 @@ Wofür der Data-Hub konkret genutzt werden kann:
 
 ## 7. Offene Aufgaben / To-dos
 
-- [ ] **Architektur-Diagramm** als richtiges Bild erstellen (statt ASCII) — Deliverable
+- [x] **Architektur-Diagramm** als richtiges Bild erstellen (statt ASCII). Deliverable
       aus dem Prof-Feedback.
-- [ ] **Sync-Strategie-Doku** (Modi pro Tabelle, CDC vs. Cursor, Fehlerverhalten) —
+- [x] **Sync-Strategie-Doku** (Modi pro Tabelle, CDC vs. Cursor, Fehlerverhalten),
       offenes Deliverable.
 - [ ] Sync-Modus **pro Tabelle** festlegen (Full Refresh vs. Incremental+Dedup) und in
       `connections/` dokumentieren.
 - [x] Performance messen für die verschiedenen Sync-Modi bei größeren und kleineren Datensätzen
 - [ ] **Informix / SOAP**: Custom-Connector (Python CDK) vs. Skript-in-Postgres entscheiden.
-- [x] **Airbyte Free vs. Paid** ausarbeiten — erledigt (siehe Abschnitt 6, Stand 16.06.2026).
+- [x] **Airbyte Free vs. Paid** ausarbeiten, erledigt (siehe Abschnitt 6, Stand 16.06.2026).
 - [ ] **File-Logging** in den Loadern statt `print()` (optional).
 - [ ] `page_size` in `load_json.py` und `load_fm_gebaeude.py` angleichen (optional).
 - [ ] Optional: Demo-Connector für eine freie API (Frankfurter / Energy-Charts).
