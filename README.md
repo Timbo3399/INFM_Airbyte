@@ -1,4 +1,4 @@
-# Campus Next-Gen Data-Hub – Airbyte Evaluation
+# Campus Next-Gen Data-Hub: Airbyte-Evaluation
 
 **Informatik Master SoSe 2026** | Evaluierung von [Airbyte](https://airbyte.com/) als ETL/Integrations-Tool zur Ablösung von Talend in der Hochschul-IT. Alle Dienste laufen lokal in Docker Desktop.
 
@@ -15,6 +15,7 @@
 | [docs/etl-prozess.md](docs/etl-prozess.md) | Runbook: erster ETL-Prozess (mit Screenshot-Punkten) |
 | [docs/testszenarien.md](docs/testszenarien.md) | Die 6 Evaluations-Szenarien |
 | [docs/anforderungen.md](docs/anforderungen.md) | Anforderungen & Umsetzungsstand (Kickoff + Szenarien) |
+| [docs/bewertung-airbyte.md](docs/bewertung-airbyte.md) | Abschluss-Bewertung: Vor-/Nachteile, Aufwand, Empfehlung, Ausblick |
 | [docs/zwischenbericht.md](docs/zwischenbericht.md) | Zwischenbericht (Abgabe 7.6.) |
 
 > Offizielle Airbyte-Doku: <https://docs.airbyte.com/> · [abctl (Deployment)](https://docs.airbyte.com/platform/deploying-airbyte/abctl) · [File Source Connector](https://docs.airbyte.com/integrations/sources/file)
@@ -46,11 +47,12 @@
 
 | Tabelle | Inhalt |
 |---------|--------|
-| `hso_students` | Studierende – ⚠️ Tabelle vorhanden, aber **leer (0 Zeilen)**: CSV strukturell defekt → Studierendendaten via File-Connector |
+| `hso_students` | Studierende (5.052). Die CSV galt zunächst als defekt, ist aber pipe-getrennt mit Pipes in einem gequoteten Feld und damit vollständig ladbar |
 | `fm_gebaeude` | Gebäude der Hochschule Offenburg (25) |
-| `fm_inst` | Institute & Organisationseinheiten (~2.080) |
-| `fm_stamm` | Raumstammdaten – Tabelle vorhanden, aktuell ohne Daten |
-| `k_plz` | PLZ-Verzeichnis Deutschland (~34.000) |
+| `fm_inst` | Institute und Organisationseinheiten (rund 2.080) |
+| `fm_stamm` | Raumstammdaten (1.245), über ETL-Mapping aus `rooms.xltx` |
+| `k_plz` | PLZ-Verzeichnis Deutschland (34.172) |
+| `anredetitel`, `k_hochschule`, `k_res` | Schlüsseltabellen aus HISinOne |
 
 **6 Testszenarien** → [docs/testszenarien.md](docs/testszenarien.md):
 
@@ -72,13 +74,13 @@
 ### Schritt 1: Voraussetzungen installieren
 
 > **Plattform:** läuft unter **Windows, Linux und macOS**. Windows nutzt die
-> PowerShell-Skripte (`.ps1`), Linux/macOS die Bash-Skripte (`.sh`) – sonst identisch.
+> PowerShell-Skripte (`.ps1`), Linux und macOS die Bash-Skripte (`.sh`). Die Logik ist identisch.
 
 | Tool | Download |
 |------|----------|
 | Docker Desktop / Engine | https://www.docker.com/products/docker-desktop/ (Linux: Docker Engine + Compose-Plugin) |
 | Git | https://git-scm.com/downloads |
-| Python ≥ 3.11 *(optional)* | https://www.python.org/downloads/ — sonst greift der Docker-Fallback |
+| Python ab 3.11 *(optional)* | https://www.python.org/downloads/ · ohne Python greift der Docker-Fallback |
 
 ### Schritt 2: Repo klonen
 
@@ -112,7 +114,7 @@ bash scripts/setup-airbyte.sh
 ```
 
 Installiert Airbyte (via `abctl`) und startet die UI.  
-**Airbyte UI:** http://localhost:8000 — Login anzeigen mit `abctl local credentials` (siehe [docs/zugang.md](docs/zugang.md))
+**Airbyte UI:** http://localhost:8000 · Login anzeigen mit `abctl local credentials` (siehe [docs/zugang.md](docs/zugang.md))
 
 ### Schritt 5: Testszenarien durchführen
 
@@ -138,8 +140,8 @@ INFM_Airbyte/
 │                                  k_plz, rooms.xltx
 │
 ├── data/                       ← Quelldaten nur für die Host-Loader (nicht im /local-Mount)
-│   ├── csv/                    ← anredetitel, k_hochschule + k_res/ (k_res1–13) → load_lookups.py
-│   ├── js/                     ← hso_accountgenerator.js (HSO-Original-Logik, REFERENZ –
+│   ├── csv/                    ← anredetitel, k_hochschule + k_res/ (k_res1 bis 13) → load_lookups.py
+│   ├── js/                     ← hso_accountgenerator.js (HSO-Original-Logik, REFERENZ,
 │   │                             nicht geladen; portiert in mapping/generate_accounts.py)
 │   └── json/                   ← fm_rna.json, hso_personal.json → load_json.py
 │
