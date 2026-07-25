@@ -1,4 +1,4 @@
-# Betreuer-Feedback & Reaktion — 09.06.2026
+# Betreuer-Feedback und unsere Reaktion, 09.06.2026
 
 **Quelle:** Rückmeldung der Betreuung (CS / Prof. Dr. Jan Münchenberg) zum [Zwischenbericht](zwischenbericht.md).
 **Reaktion dokumentiert (Stand):** 2026-06-16.
@@ -7,8 +7,6 @@ Dieses Dokument hält das Feedback fest und ordnet jeder Aussage unsere Reaktion
 Umsetzungsstand zu. Es ist die zentrale Referenz; die „Offenen Fragen" in
 [zwischenbericht.md §6](zwischenbericht.md) und [anforderungen.md §3](anforderungen.md)
 verweisen hierauf.
-
-Legende: ✅ umgesetzt · ◑ teilweise · ⏳ offen (für Endpräsentation)
 
 ---
 
@@ -19,22 +17,23 @@ Legende: ✅ umgesetzt · ◑ teilweise · ⏳ offen (für Endpräsentation)
 > - Architektur-Bild ist ok, sollte für die endgültige Präsentation aber noch besser visualisiert werden
 > - Ansonsten sehr guter Zwischenbericht und auch sehr gute Dokumentation im GIT-Repo
 
-**Reaktion:** Durchweg positiv — keine Korrektur nötig, mit **einer** Ausnahme:
+**Reaktion:** Durchweg positiv, keine Korrektur nötig, mit einer Ausnahme:
 
-- ⏳ **Architektur-Diagramm:** Aktuell ASCII-Darstellung in [architektur.md](architektur.md).
-  Für die Abschlusspräsentation eine sauber visualisierte Grafik erstellen.
+- **Architektur-Diagramm (umgesetzt):** Die ASCII-Darstellung in [architektur.md](architektur.md)
+  ist für die Abschlusspräsentation durch eine gezeichnete Grafik ersetzt
+  (`Architektur.png` im Projektstamm).
 
 ---
 
-## 2. Antworten auf unsere Fragen — und unsere Reaktion
+## 2. Antworten auf unsere Fragen und unsere Reaktion
 
-### 2.1 `hso_students.csv` — Soll-Struktur?
+### 2.1 `hso_students.csv`: Soll-Struktur?
 
 > Ja, die Daten sind so, wie sie beim Export erzeugt wurden. Sollten Sie mit Bordmitteln
 > von Airbyte keine Datenkorrekturen ausführen können, dann ermitteln Sie sich bitte selbst
 > Alternativen (zur Not auch händisch), aber dokumentieren dies bitte.
 
-**Reaktion:** ✅ Eigene Alternative umgesetzt **und** dokumentiert. Die Datei ist
+**Reaktion:** Umgesetzt. Eigene Alternative gebaut **und** dokumentiert. Die Datei ist
 pipe-getrennt mit *gequoteten* Feldern (die frühere Diagnose „mehr Spalten als Header" war
 falsch). Ein quote-bewusster Parser lädt alle **5.052 Zeilen** verlustfrei.
 
@@ -49,9 +48,9 @@ falsch). Ein quote-bewusster Parser lädt alle **5.052 Zeilen** verlustfrei.
 > Die `fm_stamm` ist die Systemtabelle für die Räume; diese sollten Sie als Teil des
 > ETL-Mappings selbst versuchen, mit den Daten aus der `rooms.xml` zu befüllen.
 
-**Reaktion:** ✅ Umgesetzt. Quelle ist die Excel-Vorlage **`rooms.xltx`** (der Betreuer
-schrieb „rooms.xml"). Das ETL-Mapping befüllt `fm_stamm` mit **1.245 Zeilen**
-(1.244 + 1 übersprungene PK-Dublette).
+**Reaktion:** Umgesetzt. Quelle ist die Excel-Vorlage **`rooms.xltx`** (der Betreuer
+schrieb „rooms.xml"). Das ETL-Mapping befüllt `fm_stamm` mit **1.244 Zeilen**;
+die Quelle hat 1.245, eine davon ist eine PK-Dublette und wird verworfen.
 
 - Umsetzung: [`scripts/load_fm_stamm.py`](../scripts/load_fm_stamm.py) (liest
   `sql/source/data/rooms.xltx`), in die Installation eingebunden.
@@ -64,7 +63,7 @@ schrieb „rooms.xml"). Das ETL-Mapping befüllt `fm_stamm` mit **1.245 Zeilen**
 > Live-System zeigen. Wichtig ist jedoch, dass Sie auch die Installation und „First-Steps"
 > gut dokumentieren.
 
-**Reaktion:** ✅ Kein Remote-/Dauer-Zugang nötig — Live-Demo bei der Abschlusspräsentation.
+**Reaktion:** Kein Remote- oder Dauerzugang nötig. Wir zeigen das System live bei der Abschlusspräsentation.
 Installation und First-Steps sind dokumentiert:
 
 - [installation-guide.md](installation-guide.md), [etl-prozess.md](etl-prozess.md),
@@ -74,18 +73,19 @@ Installation und First-Steps sind dokumentiert:
 ### 2.4 Sync-Strategie (CDC vs. Cursor)
 
 > Ich bin leider nicht so vertraut mit der Strategie. Das sollten Sie eventuell mit in die
-> Dokumentation schreiben — welche Vor-/Nachteile und was der Aufwand ist. […] Bei CDC
+> Dokumentation schreiben, welche Vor-/Nachteile und was der Aufwand ist. […] Bei CDC
 > handelt es sich um eine besondere Strategie mit Snapshots von Logs/Protokollen unabhängig
 > von der Datenbank, und der Cursor-Modus läuft einfach über den Zeitstempel. Dann reicht
 > der Zeitstempel als Synchronisationsstrategie aus.
 
-**Reaktion:** ◑ Der Betreuer **bestätigt** unseren Ansatz: der **Cursor-Modus über den
+**Reaktion:** Der Betreuer **bestätigt** unseren Ansatz: der **Cursor-Modus über den
 Zeitstempel (`updatedat`) genügt** für die Evaluation. Ein Methodenvergleich
 (CDC / Xmin / User-Defined-Cursor) steht bereits in
 [airbyte-setup.md §5](airbyte-setup.md).
 
-- ⏳ **Offen (Endpräsentation):** Den expliziten **Vor-/Nachteile-+-Aufwand-Abschnitt**
-  ausformulieren und die hier bestätigte Entscheidung darin festhalten.
+- **Umgesetzt:** Der explizite **Vor-/Nachteile-+-Aufwand-Abschnitt** steht in
+  [bewertung-airbyte.md](bewertung-airbyte.md), inklusive der hier bestätigten
+  Cursor-Entscheidung und der Messreihen zu den Sync-Strategien.
 
 ### 2.5 Scope / Szenario-Priorisierung
 
@@ -93,7 +93,7 @@ Zeitstempel (`updatedat`) genügt** für die Evaluation. Ein Methodenvergleich
 > Szenarien. Es wird also nicht bewertet, wenn Sie nur 4/6 Szenarien lösen konnten, sondern
 > zu 99,999…% Ihre Herangehensweise und die Lösungen, die Sie im Team dokumentiert haben.
 
-**Reaktion:** ✅ Kein Handlungsdruck, alle sechs Szenarien vollständig zu lösen. Fokus liegt
+**Reaktion:** Kein Handlungsdruck, alle sechs Szenarien vollständig zu lösen. Fokus liegt
 auf nachvollziehbarer Herangehensweise und sauberer Doku der gewählten Lösungen.
 
 ---
@@ -102,12 +102,12 @@ auf nachvollziehbarer Herangehensweise und sauberer Doku der gewählten Lösunge
 
 | Punkt | Status |
 |---|---|
-| hso_students — eigene Alternative + Doku | ✅ |
-| fm_stamm aus rooms befüllen | ✅ |
-| Zugang Betreuer (Live-Demo + Installations-Doku) | ✅ |
-| Scope (Herangehensweise zählt) | ✅ (informativ) |
-| Sync-Strategie (Vor-/Nachteile + Aufwand) | ◑ bestätigt; Detail-Abschnitt offen |
-| Architektur-Diagramm besser visualisieren | ⏳ offen |
+| hso_students: eigene Alternative und Doku | umgesetzt |
+| fm_stamm aus rooms befüllen | umgesetzt |
+| Zugang Betreuer (Live-Demo und Installations-Doku) | umgesetzt |
+| Scope (Herangehensweise zählt) | zur Kenntnis genommen |
+| Sync-Strategie mit Vor-/Nachteilen und Aufwand | umgesetzt, siehe [bewertung-airbyte.md](bewertung-airbyte.md) |
+| Architektur-Diagramm besser visualisieren | umgesetzt, `Architektur.png` im Projektstamm |
 
 **Vom Betreuer in dieser Runde *nicht* adressiert** (bleiben offen, siehe
 [anforderungen.md §3](anforderungen.md)): Informix-Anbindung, Code-Snippet-Ausführung (A7),

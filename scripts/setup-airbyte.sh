@@ -187,6 +187,9 @@ cat <<'EOF'
     Dest   PG  ->  Host: host.docker.internal  Port: 5434
     Dest MySQL ->  Host: host.docker.internal  Port: 3306
 
-  Naechste Schritte: docs/airbyte-setup.md
+  Naechster Schritt: Szenarien aufsetzen (Mapping, Bilder, Syncs, dbt)
+    bash scripts/setup-szenarien.sh
+
+  Feld-Referenz aller Connectoren: docs/airbyte-setup.md
   ===========================================================
 EOF

@@ -360,6 +360,9 @@ Write-Host "    Source PG  ->  Host: host.docker.internal  Port: 5433" -Foregrou
 Write-Host "    Dest   PG  ->  Host: host.docker.internal  Port: 5434" -ForegroundColor White
 Write-Host "    Dest MySQL ->  Host: host.docker.internal  Port: 3306" -ForegroundColor White
 Write-Host ""
-Write-Host "  Naechste Schritte: docs\airbyte-setup.md" -ForegroundColor Cyan
+Write-Host "  Naechster Schritt: Szenarien aufsetzen (Mapping, Bilder, Syncs, dbt)" -ForegroundColor Cyan
+Write-Host "    .\scripts\setup-szenarien.ps1" -ForegroundColor White
+Write-Host ""
+Write-Host "  Feld-Referenz aller Connectoren: docs\airbyte-setup.md" -ForegroundColor Cyan
 Write-Host "  ===========================================================" -ForegroundColor DarkGray
 Write-Host ""

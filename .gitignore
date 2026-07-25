@@ -2,11 +2,14 @@
 .env
 
 # Airbyte lokale Daten & Logs (werden von abctl/compose angelegt)
-airbyte/
+# Fuehrender Schraegstrich ist Absicht: ohne ihn greift das Muster auf JEDES
+# Verzeichnis dieses Namens in beliebiger Tiefe, also auch auf scripts/airbyte/
+# mit unseren API-Skripten. Genau das ist uns einmal passiert.
+/airbyte/
 .airbyte/
 
 # Lokal heruntergeladene Airbyte CLI (Binary/ZIP, nicht committen)
-abctl/
+/abctl/
 
 # Lokale Berechtigung für Claude-Integration
 claude_api_key.txt
@@ -41,3 +44,9 @@ config.yaml
 airbyte-env-fixed.yaml
 worker-deployment.yaml
 data/images/
+
+# dbt-Artefakte (kompilierte Modelle, Logs, Pakete)
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+.user.yml

@@ -129,6 +129,53 @@ def read_rows(path: str):
     return rows[1:]
 
 
+def build_records(rows):
+    """Sheet-Zeilen -> (Datensaetze, PK-Duplikate, Zeilen ohne Schluessel).
+
+    Der Primaerschluessel (geb_nr, ges_nr, raumid) wird hier durchgesetzt, weil
+    die Zieltabelle ihn als PRIMARY KEY fuehrt. rooms.xltx enthaelt genau eine
+    Dublette, deshalb landen 1.244 von 1.245 Zeilen in der Tabelle.
+    """
+    data, seen, dups, skipped = [], set(), 0, 0
+    for raw in rows:
+        if raw is None or all(c is None for c in raw):
+            continue
+        vals = {COLS[i]: (raw[i] if i < len(raw) else None)
+                for i in range(len(COLS))}
+
+        geb_nr = clean_str(vals["geb_nr"])
+        ges_nr = clean_str(vals["ges_nr"])
+        raumid = clean_str(vals["raumid"])
+        if geb_nr is None or ges_nr is None or raumid is None:
+            skipped += 1                 # PK-Teil fehlt
+            continue
+        pk = (geb_nr, ges_nr, raumid)
+        if pk in seen:
+            dups += 1
+            continue
+        seen.add(pk)
+
+        data.append((
+            None,                        # db_einfuegemarke (in Quelle nicht vorhanden)
+            geb_nr, ges_nr, raumid,
+            clean_str(vals["raumnr"]),
+            to_decimal(vals["flaeche"]),
+            clean_str(vals["rna_nr"]),
+            clean_str(vals["bez"]),
+            clean_str(vals["nutzer_nr"]),
+            to_date(vals["datum"]),
+            clean_str(vals["kost_nr"]),
+            clean_str(vals["traeger_nr"]),
+            clean_str(vals["fkt_nr"]),
+            clean_str(vals["kfa_nr"]),
+            clean_str(vals["bem"]),
+            clean_str(vals["raumco"]),
+            clean_str(vals["text_bez"]),
+            clean_str(vals["kurz_bez"]),
+        ))
+    return data, dups, skipped
+
+
 def main():
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     path = os.path.join(base, "sql", "source", "data", "rooms.xltx")
@@ -143,43 +190,7 @@ def main():
         cur.execute(DDL_FM_STAMM)
         cur.execute("TRUNCATE TABLE fm_stamm")
 
-        data, seen, dups, skipped = [], set(), 0, 0
-        for raw in read_rows(path):
-            if raw is None or all(c is None for c in raw):
-                continue
-            vals = {COLS[i]: (raw[i] if i < len(raw) else None)
-                    for i in range(len(COLS))}
-
-            geb_nr = clean_str(vals["geb_nr"])
-            ges_nr = clean_str(vals["ges_nr"])
-            raumid = clean_str(vals["raumid"])
-            if geb_nr is None or ges_nr is None or raumid is None:
-                skipped += 1                 # PK-Teil fehlt
-                continue
-            pk = (geb_nr, ges_nr, raumid)
-            if pk in seen:
-                dups += 1
-                continue
-            seen.add(pk)
-
-            data.append((
-                None,                        # db_einfuegemarke (in Quelle nicht vorhanden)
-                geb_nr, ges_nr, raumid,
-                clean_str(vals["raumnr"]),
-                to_decimal(vals["flaeche"]),
-                clean_str(vals["rna_nr"]),
-                clean_str(vals["bez"]),
-                clean_str(vals["nutzer_nr"]),
-                to_date(vals["datum"]),
-                clean_str(vals["kost_nr"]),
-                clean_str(vals["traeger_nr"]),
-                clean_str(vals["fkt_nr"]),
-                clean_str(vals["kfa_nr"]),
-                clean_str(vals["bem"]),
-                clean_str(vals["raumco"]),
-                clean_str(vals["text_bez"]),
-                clean_str(vals["kurz_bez"]),
-            ))
+        data, dups, skipped = build_records(read_rows(path))
 
         execute_values(cur, """
             INSERT INTO fm_stamm

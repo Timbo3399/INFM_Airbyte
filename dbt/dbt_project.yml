@@ -1,0 +1,23 @@
+# dbt-Projekt fuer Szenario 2 (Facility Management).
+#
+# Airbyte bringt die Rohtabellen fm_stamm, fm_gebaeude und fm_inst nach
+# dest-postgres, dbt baut daraus die denormalisierte Raumtabelle fm_raeume.
+# Genau die Arbeitsteilung, die ELT von ETL unterscheidet: das Werkzeug
+# transportiert, die Transformation passiert in der Ziel-Datenbank.
+#
+# Airbyte 2.1.1 fuehrt dbt NICHT mehr selbst aus, siehe docs/dbt.md.
+# Dieses Projekt laeuft als eigener Schritt.
+
+name: hso_datahub
+version: "1.0.0"
+config-version: 2
+
+profile: hso_datahub
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  hso_datahub:
+    +materialized: table
