@@ -80,6 +80,10 @@ def gewuenschte_connections(src: dict, dst: dict) -> dict:
             src["HSO Source PostgreSQL"], dst["HSO Dest MySQL"],
             [stream("hso_user", INCREMENTAL_DEDUP,
                     cursor="updatedat", pk="user_id")]),
+        # Szenario 3: BYTEA-Handling der Destination pruefen.
+        "HSO Bilder nach MySQL": (
+            src["HSO Source PostgreSQL"], dst["HSO Dest MySQL"],
+            [stream("hso_images", FULL_REFRESH)]),
     }
 
 
@@ -106,6 +110,15 @@ def main():
     if fehlend:
         raise SystemExit("Fehlende Sources/Destinations: " + ", ".join(fehlend)
                          + "\nZuerst: python scripts/airbyte_setup_objects.py")
+
+    # Katalog der Postgres-Quelle auffrischen, bevor wir Connections anlegen.
+    # Ohne das kennt Airbyte Tabellen und Views nicht, die seit der letzten
+    # Erkennung dazugekommen sind, und lehnt den Stream als unbekannt ab.
+    erkannt = api.discover_schema(src["HSO Source PostgreSQL"])
+    if erkannt:
+        print(f"Schema der Quelle neu eingelesen: {len(erkannt)} Streams.")
+    else:
+        print("Hinweis: Schema-Erkennung nicht moeglich, nutze den Cache.")
 
     gewuenscht = gewuenschte_connections(src, dst)
     vorhanden = api.liste("connections")
