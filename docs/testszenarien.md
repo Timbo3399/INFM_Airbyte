@@ -112,6 +112,54 @@ CREATE TABLE fm_raeume (
 > - Custom SQL-View in source-postgres, dann syncen
 > - Python/SQL-Skript nach dem Sync
 
+### Umsetzung mit dbt
+
+Wir haben den ersten Weg genommen. Der Ablauf hat drei Schritte, und Airbyte ist an
+zweien davon beteiligt:
+
+```powershell
+python scripts/airbyte_run_sync.py "HSO FM nach PG"              # 1. roh ins Ziel
+python -m dbt.cli.main run --project-dir dbt --profiles-dir dbt  # 2. transformieren
+python scripts/airbyte_run_sync.py "HSO fm_raeume nach MySQL"    # 3. weiterreichen
+```
+
+Schritt 1 bringt `fm_stamm`, `fm_gebaeude` und `fm_inst` unverändert nach
+`dest-postgres` (3.352 Zeilen, PT47S). Schritt 2 baut daraus `fm_raeume`. Schritt 3
+schiebt das Ergebnis nach MySQL, wo die Aufgabenstellung die Raumtabelle verlangt.
+
+Vollständige Beschreibung des dbt-Projekts: [dbt.md](dbt.md).
+
+### Zwei Mapping-Probleme, die den Join überhaupt erst nötig machen
+
+**Die Gebäudenummern liegen in zwei Formaten vor.** `fm_stamm` sagt `101`,
+`fm_gebaeude` sagt `0101`. Die Raumdaten kommen aus einer Excel-Datei, die die
+führende Null als Zahl verschluckt hat, die Gebäudedaten aus einer CSV, die sie als
+Text behalten hat. Der Join ohne Normalisierung trifft **0 von 1.244** Zeilen, mit
+`lpad(geb_nr, 4, '0')` alle 1.244.
+
+Das ist die unangenehme Sorte Fehler: nichts bricht ab, die Tabelle entsteht, die
+Gebäudespalte ist einfach leer. Im Modell steht deshalb ein `not_null`-Test auf
+`gebaeude`, der genau dann anschlägt.
+
+**Das Institut hängt an der Kostenstelle**, nicht am Nutzer. `kost_nr` auf `inst_nr`
+trifft 1.184 von 1.244 Zeilen, der naheliegendere Weg über `nutzer_nr` keine einzige.
+
+### Ergebnis
+
+`fm_raeume` in `dest-postgres`: 1.244 Zeilen, alle mit Gebäudenamen, 1.184 mit
+Institut, zusammen 52.009 m². Vier dbt-Tests (`unique` und `not_null`) laufen grün.
+
+| raum_id | raumnr | gebaeude | institut | flaeche | kostenstelle |
+|---|---|---|---|---:|---|
+| 101-0-0 | A000 | Gebäude A | FH Allgemein | 5.00 | 340401 |
+| 101-0-1 | A001 | Gebäude A | TBL Allgemein | 34.00 | 460101 |
+| 101-0-10a | A010a | Gebäude A | Marketing Kommunikation | 56.00 | 320601 |
+
+In `dest-mysql` steht danach dasselbe: 1.244 Zeilen, 1.244 mit Gebäude, 1.184 mit
+Institut, 52.009 m² (Sync-Job 9, 191.991 Bytes, PT55S). Damit ist Teilaufgabe B
+erfüllt, die MySQL-Datenbank enthält genau eine Raumtabelle mit Raumnummer,
+Gebäudename, Institut und Kostenstelle.
+
 ---
 
 ## Szenario 3: Testdaten für Bilder generieren

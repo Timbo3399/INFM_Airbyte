@@ -57,6 +57,18 @@ SQL transformieren, oder wie wir die Daten vor Airbyte aufbereiten. Talend erlau
 Mapping-Code direkt im Job. Wer von dort migriert, muss jedes nicht-triviale Mapping neu
 konzipieren, nicht nur portieren.
 
+**Und dbt läuft nicht mehr in Airbyte.** Ältere Versionen konnten pro Connection eine
+dbt-Transformation anstoßen. In Airbyte 2.1.1 gibt es das nicht mehr: ein
+Connection-Objekt kennt weder `transformations` noch `operations` oder
+`normalization`, der interne Endpunkt `/api/v1/operations/list` antwortet mit 403.
+
+Die Empfehlung "Airbyte plus dbt" bedeutet damit zwei getrennte Werkzeuge mit zwei
+getrennten Zeitplänen. Wer "erst syncen, dann transformieren" braucht, stellt die
+Reihenfolge selbst her, per Skript oder Orchestrator. Für Szenario 2 sah das so aus:
+Airbyte holt die Rohtabellen ins Ziel, dbt baut daraus das Modell, Airbyte reicht das
+Ergebnis weiter nach MySQL. Drei Schritte, drei Aufrufe, und die Verkettung liegt bei
+uns. Was in Talend ein Job war, sind hier drei Bausteine aus zwei Werkzeugen.
+
 **ELT statt ETL.** Airbyte transportiert Rohdaten und transformiert nicht unterwegs. In
 unserem Projekt hat sich das konkret gezeigt: der SQL-Init lud null von fünf Tabellen,
 weil die Quell-CSVs eingebettete Header-Zeilen, NUL-Bytes, unquotierte Kommas und
@@ -142,8 +154,9 @@ einer Migration selbst nachrüsten, etwa über nachgelagerte Constraints oder Te
 |---|---|
 | Installation und Testumgebung | gering, einmalig automatisierbar. Unser Setup läuft skriptgesteuert in unter 20 Minuten |
 | Einarbeitung in die Betriebsform | **hoch und unterschätzt.** Airbyte Community läuft über `abctl` in einem kind-Kubernetes-Cluster. Für die Fehlersuche sind `kubectl`-Kenntnisse nötig |
-| Undokumentierte Hürden | wir haben vier Stolperfallen gefunden und gelöst, die in der offiziellen Doku nicht stehen. Ohne Kubernetes-Verständnis ist keine davon auffindbar, weil die UI nur „Pending" anzeigt |
-| Connections einrichten | gering pro Tabelle, UI-geführt. Sync-Modus und Cursor müssen bewusst gewählt werden |
+| Undokumentierte Hürden | **durchgehend präsent.** Vier Stolperfallen standen schon im Zwischenbericht, im weiteren Verlauf kamen ebenso viele dazu: ANSI-Escapes in der `abctl`-Ausgabe, `tunnel_method` als Pflichtfeld, `raw_data_schema` beim MySQL-Ziel, der zwischengespeicherte Stream-Katalog. Keine davon steht in der offiziellen Doku |
+| Connections einrichten | gering pro Tabelle, UI-geführt. Sync-Modus und Cursor müssen bewusst gewählt werden. Per API skriptbar, siehe [airbyte_api.md](airbyte_api.md) |
+| dbt einrichten | gering. Installation und Projektgerüst sind schnell erledigt, das Modell selbst ist SQL. Der Aufwand liegt im Verstehen der Daten, nicht im Werkzeug |
 | Datenaufbereitung | **der größte Posten.** Für unsere zehn Quelltabellen waren sieben eigene Loader nötig |
 
 ### Laufender Betrieb
@@ -161,6 +174,22 @@ oder Berechnungen müssen als dbt-Modelle oder als vorgeschaltete Skripte neu en
 Eine belastbare Schätzung dafür setzt eine Inventur der bestehenden Talend-Jobs voraus,
 die wir nicht hatten.
 
+Ein Datenpunkt immerhin, gemessen am Modell aus Szenario 2. dbt einrichten war schnell:
+`pip install dbt-core dbt-postgres`, drei kleine Konfigurationsdateien, keine Konflikte
+mit dem bestehenden Stack. Das Modell selbst ist einfaches SQL, es läuft in 0,10 s über
+1.244 Zeilen.
+
+Die Arbeit steckte woanders. Dass die Gebäudenummern in `fm_stamm` und `fm_gebaeude` in
+zwei verschiedenen Formaten vorliegen und der Join deshalb ohne Normalisierung null
+Treffer liefert, und dass das Institut an der Kostenstelle hängt und nicht am Nutzer,
+mussten wir erst herausfinden. Beides steht in keiner Schema-Dokumentation.
+
+Genau dieser Anteil steckt auch in den bestehenden Talend-Jobs, und er lässt sich nicht
+übersetzen. Eine Migration ist keine Übertragung von Job zu Modell, sondern eine erneute
+Auseinandersetzung mit den Daten. Wer den Aufwand schätzen will, sollte nicht Jobs
+zählen, sondern fragen, wie viel undokumentiertes Wissen über Datenformate in ihnen
+steckt.
+
 ---
 
 ## 4. Empfehlung
@@ -169,13 +198,23 @@ Airbyte ist für den Anteil geeignet, der aus Replikation zwischen Datenbanken u
 dateibasierten Quellen besteht. Dort spart es Eigenbau und bringt Monitoring mit.
 
 Airbyte ist kein direkter Talend-Ersatz für Jobs mit eigener Transformationslogik. Diese
-Fälle brauchen eine zweite Komponente, realistisch dbt. Die Entscheidung ist also nicht
-„Airbyte statt Talend", sondern ob die Hochschul-IT bereit ist, das Modell auf
-Extraktion mit Airbyte plus Transformation in SQL umzustellen.
+Fälle brauchen eine zweite Komponente, realistisch dbt. Wir haben das in Szenario 2
+durchgespielt, und die Kombination trägt: die Raumtabelle entsteht sauber, das Modell ist
+getestet, das Ergebnis landet in MySQL. Als Architektur funktioniert es.
 
-Zwei Punkte sollten vor einer Entscheidung geklärt werden: ob Informix zwingend
-angebunden werden muss, und wie viele der bestehenden Jobs echte Transformationslogik
-enthalten.
+Der Preis dafür ist Zerlegung. Ein Talend-Job wird zu drei Schritten aus zwei Werkzeugen,
+und weil Airbyte dbt nicht mehr ausführt und Connections nicht verketten kann, liegt die
+Reihenfolge bei der Hochschul-IT. Für einen überschaubaren Bestand ist das ein Skript.
+Für viele abhängige Strecken wird daraus ein Orchestrator, also eine dritte Komponente.
+
+Die Entscheidung ist deshalb nicht „Airbyte statt Talend", sondern ob die Hochschul-IT
+bereit ist, von einem Werkzeug auf einen kleinen Werkzeugkasten umzustellen: Airbyte für
+die Extraktion, dbt für die Transformation, etwas für die Reihenfolge.
+
+Drei Punkte sollten vor einer Entscheidung geklärt werden: ob Informix zwingend
+angebunden werden muss, wie viele der bestehenden Jobs echte Transformationslogik
+enthalten, und ob Binärdaten übertragen werden müssen. Der letzte Punkt ist nach unserem
+BLOB-Befund ein Ausschlusskriterium für diesen Weg.
 
 ---
 
@@ -185,8 +224,10 @@ Was aus dieser Evaluation heraus als nächstes sinnvoll wäre:
 
 - **Informix und SOAP** über das Python-CDK anbinden und prüfen, ob ein eigener
   Connector wartbar bleibt. Alternativ ein vorgeschaltetes Skript in die Quell-DB.
-- **dbt anbinden** und ein bestehendes Talend-Mapping exemplarisch als dbt-Modell
-  nachbauen. Damit wird der Migrationsaufwand erstmals messbar statt geschätzt.
+- **Ein echtes Talend-Mapping als dbt-Modell nachbauen.** Das Gerüst steht
+  ([dbt.md](dbt.md)), `fm_raeume` zeigt, dass der Weg trägt. Ein Modell aus dem
+  Produktivbestand würde den Migrationsaufwand erstmals an realer Logik messen statt an
+  unserem Testfall.
 - **Sync-Modus pro Tabelle festlegen.** Nach unseren Messungen lohnt Incremental erst
   ab einer relevanten Änderungsmenge. Bei kleinen Tabellen ist Full Refresh
   einfacher und nicht langsamer.
