@@ -38,4 +38,6 @@ Thumbs.db
 *.swp
 
 config.yaml
+airbyte-env-fixed.yaml
+worker-deployment.yaml
 data/images/

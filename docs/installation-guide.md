@@ -281,3 +281,22 @@ pip install requests psycopg2-binary      # Linux/macOS ggf. pip3 + virtuelle Um
 Alle Ports, Hosts und Zugangsdaten stehen zentral in
 **[zugang.md](zugang.md#3-verbindungsparameter-zentrale-referenz)** (DB-Tools nutzen
 `localhost`, die Airbyte-UI `host.docker.internal`).
+
+## Airbyte ist abgestürzt
+
+Es kann beispielsweise aufgrund von Ressourcen-Limits dazu kommen, dass sich Airbyte mit einer nicht weiter spezifizierten Fehlermeldung
+aufhängt. In diesem Fall muss der Cluster mit folgenden Schritten bereinigt werden, damit die Funktionalität wieder sichergestellt werden kann.
+
+1. Hängenden Pod identifizieren (Status: unknown | CrashLoopBackOff | error)
+
+```bash
+docker exec airbyte-abctl-control-plane kubectl get pods -n airbyte-abctl
+```
+
+2. Pod löschen
+
+```bash
+docker exec airbyte-abctl-control-plane kubectl delete pod <POD_NAME> -n airbyte-abctl --force
+```
+
+Die entsprechende Komponente sollte sich anschließend automatisch neu starten und Airbyte wieder ordnunsgemäß funktionieren
