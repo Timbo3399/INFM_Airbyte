@@ -146,6 +146,14 @@ def test_mysql_destination_braucht_tunnel_method_und_public_key_retrieval():
     assert cfg["jdbc_url_params"] == "allowPublicKeyRetrieval=true"
 
 
+def test_mysql_destination_legt_rohdaten_in_die_eigene_datenbank():
+    # Ohne raw_data_schema versucht Airbyte, die Datenbank airbyte_internal
+    # anzulegen. destuser darf das nicht, der Sync bricht dann mit
+    # "Destination process exited with non-zero exit code 1" ab.
+    cfg = a.destination_mysql_config("h", 3306, "destdb", "u", "p")
+    assert cfg["raw_data_schema"] == "destdb"
+
+
 def test_file_source_setzt_trennzeichen_als_reader_option():
     cfg = a.source_file_config("/local/hso_students.csv", "hso_students", separator="|")
     assert cfg["provider"] == {"storage": "local"}
