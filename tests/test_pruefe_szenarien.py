@@ -183,6 +183,43 @@ def test_alles_ok_bei_leerer_liste():
     assert p.alles_ok([]) is True
 
 
+def test_ratschlag_vermutet_bei_lauter_fehlern_den_stack():
+    # Wenn KEINE einzige Messung durchkommt, liegt es fast immer daran, dass die
+    # Container nicht laufen. Der Hinweis auf setup_szenarien fuehrt dann in die
+    # falsche Richtung, und in einer Praesentation kostet das Minuten.
+    a = p.Pruefung("Sz1", "a", 1, "dest_pg", "x")
+    b = p.Pruefung("Sz2", "b", 2, "dest_mysql", "x")
+
+    text = p.ratschlag([(a, None), (b, None)])
+
+    assert "start" in text.lower()
+    assert "setup_szenarien" not in text
+
+
+def test_ratschlag_verweist_bei_einzelnen_luecken_auf_den_aufbau():
+    a = p.Pruefung("Sz1", "a", 1, "dest_pg", "x")
+    b = p.Pruefung("Sz2", "b", 2, "dest_pg", "x")
+
+    text = p.ratschlag([(a, 1), (b, None)])
+
+    assert "setup_szenarien" in text
+
+
+def test_ratschlag_unterscheidet_null_messung_von_falschem_wert():
+    # Eine gemessene, aber abweichende Zahl ist kein Stack-Problem.
+    a = p.Pruefung("Sz1", "a", 1, "dest_pg", "x")
+
+    text = p.ratschlag([(a, 99)])
+
+    assert "setup_szenarien" in text
+
+
+def test_ratschlag_ist_leer_wenn_alles_stimmt():
+    a = p.Pruefung("Sz1", "a", 1, "dest_pg", "x")
+
+    assert p.ratschlag([(a, 1)]) == ""
+
+
 def test_zusammenfassung_zaehlt_treffer_und_fehler():
     a = p.Pruefung("Sz1", "a", 1, "dest_pg", "x")
     b = p.Pruefung("Sz2", "b", 2, "dest_pg", "x")
