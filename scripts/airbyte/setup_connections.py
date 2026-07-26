@@ -109,6 +109,16 @@ def gewuenschte_connections(src: dict, dst: dict) -> dict:
             src["HSO Source PostgreSQL"], dst["HSO Dest MySQL"],
             [stream("hso_user", INCREMENTAL_DEDUP,
                     cursor="updatedat", pk="user_id")]),
+        # Szenario 4, Schritt 3: die generierten Accounts als eigene
+        # Zieltabellen je Gruppe. Die Streams sind Views (siehe
+        # sql/source/views/hso_accounts.sql) und heissen absichtlich anders als
+        # ihre Quelltabellen: hso_students liegt schon aus dem File-Connector in
+        # dest-postgres, und zwei Connections auf denselben Stream im selben Ziel
+        # verdoppeln die Tabelle (Befund 27).
+        "HSO Accounts nach PG": (
+            src["HSO Source PostgreSQL"], dst["HSO Dest PostgreSQL"],
+            [stream("hso_student_accounts", FULL_REFRESH),
+             stream("hso_personal_accounts", FULL_REFRESH)]),
         # Szenario 3: BYTEA-Handling der Destination pruefen.
         "HSO Bilder nach MySQL": (
             src["HSO Source PostgreSQL"], dst["HSO Dest MySQL"],
