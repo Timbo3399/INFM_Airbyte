@@ -175,6 +175,25 @@ def zusammenfassung(ergebnisse) -> str:
     return f"{gesamt} Pruefungen, {ok} ok, {gesamt - ok} fehlt"
 
 
+def ratschlag(ergebnisse) -> str:
+    """Was als naechstes zu tun ist, oder "" wenn alles stimmt.
+
+    Zwei Fehlerbilder, die nach demselben aussehen: keine Messung kommt durch
+    (dann laeuft der Stack nicht), oder einzelne Sollzustaende fehlen (dann fehlt
+    ein Aufbauschritt). Der falsche Hinweis kostet in einer Demo Minuten.
+    """
+    offen = [(p, g) for p, g in ergebnisse if bewerte(p.erwartet, g) != "ok"]
+    if not offen:
+        return ""
+    if all(g is None for _, g in ergebnisse):
+        return ("Keine einzige Messung kam durch. Laeuft der Stack?\n"
+                "    docker ps\n"
+                "    .\\scripts\\start.ps1      (Linux/macOS: bash scripts/start.sh)")
+    return ("Sollwerte stehen in docs/ergebnisse.md."
+            " Fehlt ein Zielzustand, hilft meist:\n"
+            "    python scripts/setup_szenarien.py")
+
+
 KOPF = ("Szenario", "Pruefung", "erwartet", "gefunden", "Status")
 
 
@@ -305,10 +324,9 @@ def main(argv):
         print()
     print(zusammenfassung(ergebnisse))
 
-    if not alles_ok(ergebnisse):
-        print("\nSollwerte stehen in docs/ergebnisse.md."
-              " Fehlt ein Zielzustand, hilft meist:")
-        print("    python scripts/setup_szenarien.py")
+    hinweis = ratschlag(ergebnisse)
+    if hinweis:
+        print("\n" + hinweis)
         return 1
     return 0
 
