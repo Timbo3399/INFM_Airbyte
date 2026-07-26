@@ -28,7 +28,7 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 > Dieses Runbook legt Source, Destination und Connection **von Hand** an, weil es
 > zeigen soll, wie der Ablauf in der UI aussieht. Wer nur den fertigen Zustand
 > braucht, nimmt stattdessen den dritten Installationsschritt: er legt alle
-> sieben Connections per API an, fährt die Syncs und baut das dbt-Modell.
+> acht Connections per API an, fährt die Syncs und baut das dbt-Modell.
 >
 > Windows `.\scripts\setup-szenarien.ps1` · Linux/macOS `bash scripts/setup-szenarien.sh`
 > · Details in [installation-guide.md](installation-guide.md#5-schritt-3-szenarien-aufsetzen)

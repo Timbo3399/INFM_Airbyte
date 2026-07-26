@@ -94,6 +94,12 @@ PERSONAL_GESETZT = pz.Pruefung(
 VIEW_DA = pz.Pruefung(
     "Sz5", "View hso_user in der Quelle", 5922, "source_pg",
     "SELECT count(*) FROM hso_user")
+STUDENT_VIEW_DA = pz.Pruefung(
+    "Sz4", "View hso_student_accounts in der Quelle", 5052, "source_pg",
+    "SELECT count(*) FROM hso_student_accounts")
+PERSONAL_VIEW_DA = pz.Pruefung(
+    "Sz4", "View hso_personal_accounts in der Quelle", 870, "source_pg",
+    "SELECT count(*) FROM hso_personal_accounts")
 STUDENTS_IM_ZIEL = pz.Pruefung(
     "Sz1", "hso_students in dest-postgres", 5052, "dest_pg",
     "SELECT count(*) FROM hso_students")
@@ -128,6 +134,12 @@ SCHRITTE = [
             "python", "scripts/mapping/create_hso_user_view.py", "~1 s",
             (VIEW_DA,)),
 
+    # Vor 'connections': Airbyte muss die Views beim Anlegen der Connection
+    # kennen, sonst wird sie vertagt (Befund 28).
+    Schritt("accounts-views", "Account-Sichten je Gruppe anlegen (Szenario 4)",
+            "python", "scripts/mapping/create_account_views.py", "~1 s",
+            (STUDENT_VIEW_DA, PERSONAL_VIEW_DA)),
+
     # Ohne Pruefung: beide Skripte sind selbst idempotent und brauchen nur
     # Sekunden. Sie laufen immer, damit ein fehlendes Airbyte-Objekt nach einem
     # abctl-Neuaufbau garantiert nachgezogen wird (Befund 19).
@@ -155,6 +167,11 @@ SCHRITTE = [
     Schritt("sync-fm", "Sync fm_stamm und fm_inst nach dest-postgres",
             "sync", "HSO FM nach PG", "~1 bis 2 min",
             (FM_STAMM_IM_ZIEL,)),
+
+    Schritt("sync-accounts", "Sync der Account-Sichten nach dest-postgres (Szenario 4)",
+            "sync", "HSO Accounts nach PG", "~1 bis 2 min",
+            (_soll("Sz4", "hso_student_accounts"),
+             _soll("Sz4", "hso_personal_accounts"))),
 
     Schritt("sync-bilder", "Sync hso_images nach MySQL (Szenario 3, Befund 1)",
             "sync", "HSO Bilder nach MySQL", "~1 bis 2 min",

@@ -2,6 +2,15 @@
 
 Offizielle Doku: <https://docs.airbyte.com/platform/using-airbyte/getting-started/oss-quickstart>
 
+> **Feld-Referenz, kein Ablauf.** Dieses Dokument zeigt, welche Werte in welches
+> Feld gehören, und ist zum Nachschlagen und Handklicken gedacht. Wer den fertigen
+> Zustand herstellen will, nimmt den dritten Installationsschritt: er legt alle
+> Sources, Destinations und Connections per API an, fährt die Syncs und baut das
+> dbt-Modell.
+>
+> Windows `.\scripts\setup-szenarien.ps1` · Linux/macOS `bash scripts/setup-szenarien.sh`
+> · Der komplette Weg steht in [installation-guide.md](installation-guide.md).
+
 **Offizielle Referenzen der hier genutzten Connectoren/Konzepte:**
 
 | Thema | Offizielle Doku |

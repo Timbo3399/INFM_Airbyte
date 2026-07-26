@@ -275,18 +275,34 @@ python scripts/mapping/generate_accounts.py
 **Airbyte Custom Transformation:**
 In Airbyte kann die Account-Logik als dbt-Modell oder über einen Custom Python Connector implementiert werden.
 
-**Ziel-Tabelle** (`dest-postgres`):
-```sql
-CREATE TABLE hso_students_mapped (
-    mtknr      INTEGER,
-    firstname  VARCHAR(100),
-    surname    VARCHAR(100),
-    user_id    VARCHAR(20),  -- generierter Account, wie in hso_students
-    email      VARCHAR(255),
-    stg        VARCHAR(20),
-    fakult     VARCHAR(100)
-);
+**Schritt 3, die Accounts ins Ziel bringen:** [`scripts/mapping/create_account_views.py`](../scripts/mapping/create_account_views.py)
+
+Die Aufgabenstellung verlangt eigene Zieltabellen je Gruppe. Airbyte kopiert
+Streams 1:1, also liefert je eine Quell-Sicht je Zieltabelle
+([`sql/source/views/hso_accounts.sql`](../sql/source/views/hso_accounts.sql)). Die
+Connection `HSO Accounts nach PG` bringt beide als Full Refresh nach
+`dest-postgres`.
+
+```powershell
+python scripts/mapping/create_account_views.py
+python scripts/airbyte/run_sync.py "HSO Accounts nach PG"
 ```
+
+Ergebnis, in der Ziel-DB verifiziert: `hso_student_accounts` 5.052 Zeilen,
+`hso_personal_accounts` 870, alle mit `user_id`, alle `user_id` verschieden, alle
+mit E-Mail.
+
+**Ein Befund fiel dabei ab.** Die Sichten heißen absichtlich nicht wie ihre
+Quelltabellen. Der naheliegende Weg, `hso_students` direkt aus source-postgres zu
+syncen, kollidiert mit dem File-Connector, der denselben Stream schon nach
+`dest-postgres` schreibt. Zwei Connections auf denselben Stream im selben Ziel
+verdoppeln die Tabelle beim ersten Aufbau, weil Full Refresh Overwrite nur echt
+ältere Generationen löscht und der Zähler pro Connection läuft (Zeile 27 in
+[ergebnisse.md](ergebnisse.md)). Nachgemessen: `hso_students` im Ziel blieb bei
+5.052, die neuen Tabellen kamen sauber daneben.
+
+Eigene Stream-Namen sind damit keine Kosmetik, sondern die Bedingung dafür, dass
+zwei Wege in dieselbe Ziel-DB nebeneinander bestehen können.
 
 ---
 
