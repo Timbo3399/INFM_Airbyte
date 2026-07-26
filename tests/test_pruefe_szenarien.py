@@ -76,6 +76,26 @@ def test_sollwerte_szenario_4():
     assert _soll("Sz4", "eindeutige user_id").erwartet == 5922
 
 
+def test_sollwerte_szenario_4_im_ziel():
+    # Schritt 3 des Szenarios: die Accounts als eigene Zieltabellen je Gruppe.
+    # 5.052 Studierende und 870 Personal, beide Zahlen in ergebnisse.md belegt.
+    assert _soll("Sz4", "hso_student_accounts").erwartet == 5052
+    assert _soll("Sz4", "hso_personal_accounts").erwartet == 870
+
+
+def test_die_ziel_pruefungen_von_szenario_4_lesen_dest_postgres():
+    for teil in ("hso_student_accounts", "hso_personal_accounts"):
+        assert _soll("Sz4", teil).quelle == "dest_pg"
+
+
+def test_die_summe_der_beiden_gruppen_ergibt_die_gesamtzahl():
+    # Haelt zusammen, was sonst auseinanderlaufen kann: 5.052 + 870 = 5.922.
+    einzeln = (_soll("Sz4", "hso_student_accounts").erwartet
+               + _soll("Sz4", "hso_personal_accounts").erwartet)
+
+    assert einzeln == _soll("Sz4", "user_id gesetzt").erwartet
+
+
 def test_sollwerte_szenario_5():
     assert _soll("Sz5", "hso_user Zeilen").erwartet == 5922
     assert _soll("Sz5", "verschiedene user_id").erwartet == 5922
