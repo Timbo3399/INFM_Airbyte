@@ -209,7 +209,9 @@ steckt.
 ## 4. Empfehlung
 
 Airbyte ist für den Anteil geeignet, der aus Replikation zwischen Datenbanken und
-dateibasierten Quellen besteht. Dort spart es Eigenbau und bringt Monitoring mit.
+dateibasierten Quellen besteht. Dort spart es Eigenbau und bringt Monitoring mit, während es
+durch integriertes State-Management und gute Skalierbarkeit garantiert, dass auch wachsende Datenmengen
+performant und ausfallsicher übertragen werden.
 
 Airbyte ist kein direkter Talend-Ersatz für Jobs mit eigener Transformationslogik. Diese
 Fälle brauchen eine zweite Komponente, realistisch dbt. Wir haben das in Szenario 2
