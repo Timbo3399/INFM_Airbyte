@@ -213,7 +213,7 @@ bash scripts/setup-szenarien.sh
 ```
 
 Das Skript prüft die Voraussetzungen (Container laufen, Airbyte erreichbar,
-Python-Pakete da) und arbeitet dann fünfzehn Schritte in fester Reihenfolge ab:
+Python-Pakete da) und arbeitet dann siebzehn Schritte in fester Reihenfolge ab:
 
 | # | Schritt | Dauer | Was passiert |
 |---|---|---|---|
@@ -221,17 +221,19 @@ Python-Pakete da) und arbeitet dann fünfzehn Schritte in fester Reihenfolge ab:
 | 2 | `accounts` | ~2 s | Account-IDs nach HSO-Schema, Szenario 4 |
 | 3 | `bilder` | ~2 min | 1.100 Bilder als BYTEA in `hso_images`, Szenario 3 |
 | 4 | `view` | ~1 s | View `hso_user` als gemeinsame IdM-Sicht, Szenario 5 |
-| 5 | `objekte` | ~30 s | Airbyte Sources und Destinations über die Public API |
-| 6 | `connections` | ~2 min | Die sieben Connections, inklusive Schema-Auffrischung |
-| 7 | `sync-pg` | ~1 bis 2 min | `fm_gebaeude` und `k_plz` nach dest-postgres, Szenario 1 |
-| 8 | `sync-mysql` | ~1 bis 2 min | dieselben beiden nach dest-mysql |
-| 9 | `sync-students` | ~1 bis 2 min | `hso_students.csv` über den File-Connector |
-| 10 | `sync-fm` | ~1 bis 2 min | `fm_stamm` und `fm_inst` nach dest-postgres |
-| 11 | `sync-bilder` | ~1 bis 2 min | `hso_images` nach MySQL, Szenario 3 |
-| 12 | `sync-idm` | ~1 bis 2 min | `hso_user` nach MySQL, Incremental mit Dedup, Szenario 5 |
-| 13 | `dbt` | ~5 s | `fm_raeume` in dest-postgres bauen, Szenario 2 |
-| 14 | `connections-raeume` | ~40 s | die vertagte Connection für `fm_raeume` nachziehen |
-| 15 | `sync-raeume` | ~1 bis 2 min | das fertige Modell weiter nach MySQL |
+| 5 | `accounts-views` | ~1 s | Views `hso_student_accounts` und `hso_personal_accounts`, Szenario 4 |
+| 6 | `objekte` | ~30 s | Airbyte Sources und Destinations über die Public API |
+| 7 | `connections` | ~2 min | Die acht Connections, inklusive Schema-Auffrischung |
+| 8 | `sync-pg` | ~1 bis 2 min | `fm_gebaeude` und `k_plz` nach dest-postgres, Szenario 1 |
+| 9 | `sync-mysql` | ~1 bis 2 min | dieselben beiden nach dest-mysql |
+| 10 | `sync-students` | ~1 bis 2 min | `hso_students.csv` über den File-Connector |
+| 11 | `sync-fm` | ~1 bis 2 min | `fm_stamm` und `fm_inst` nach dest-postgres |
+| 12 | `sync-accounts` | ~1 bis 2 min | die beiden Account-Sichten je als eigene Zieltabelle, Szenario 4 |
+| 13 | `sync-bilder` | ~1 bis 2 min | `hso_images` nach MySQL, Szenario 3 |
+| 14 | `sync-idm` | ~1 bis 2 min | `hso_user` nach MySQL, Incremental mit Dedup, Szenario 5 |
+| 15 | `dbt` | ~5 s | `fm_raeume` in dest-postgres bauen, Szenario 2 |
+| 16 | `connections-raeume` | ~40 s | die vertagte Connection für `fm_raeume` nachziehen |
+| 17 | `sync-raeume` | ~1 bis 2 min | das fertige Modell weiter nach MySQL |
 
 Am Ende ruft das Skript `pruefe_szenarien.py` auf und zeigt den Sollzustand.
 
@@ -240,6 +242,7 @@ Am Ende ruft das Skript `pruefe_szenarien.py` auf und zeigt den Sollzustand.
 - `accounts` braucht die Namen aus `namen`
 - `view` braucht die Accounts, sonst ist sie leer (sie filtert auf gesetzte `user_id`)
 - `view` braucht auch `bilder`, denn sie liest `hso_images`, und `CREATE OR REPLACE VIEW` prüft die referenzierten Tabellen sofort. Fehlt die Tabelle, bricht der Schritt mit `relation "hso_images" does not exist` ab
+- `accounts-views` braucht die Accounts und muss vor `connections` liegen, denn Airbyte muss die Views beim Anlegen der Connection kennen
 - `sync-idm` braucht die Bilder, sonst bleibt `image_id` im Ziel leer
 - `dbt` braucht `sync-fm`, denn es baut `fm_raeume` aus `fm_stamm` in der Ziel-DB
 - `sync-raeume` braucht `dbt`, denn es transportiert dessen Ergebnis
@@ -393,7 +396,7 @@ Alle Loader sind idempotent (`TRUNCATE` plus `INSERT`), ein zweiter Lauf schadet
 also nicht.
 
 Schritt 2 und 3 gibt es nicht von Hand: `abctl local install` braucht den
-`--volume`-Mount aus dem Setup-Skript, und die fünfzehn Szenario-Schritte von
+`--volume`-Mount aus dem Setup-Skript, und die siebzehn Szenario-Schritte von
 Hand nachzuklicken ist genau die Arbeit, die `setup-szenarien` abnimmt.
 
 ---

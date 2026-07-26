@@ -54,6 +54,36 @@ SRC = {"HSO Source PostgreSQL": "s-pg", "HSO CSV hso_students": "s-csv",
 DST = {"HSO Dest PostgreSQL": "d-pg", "HSO Dest MySQL": "d-my"}
 
 
+def test_die_account_connection_bringt_beide_gruppen_getrennt_ins_ziel():
+    """Szenario 4, Schritt 3: je eine Zieltabelle fuer Studierende und Personal.
+
+    Die Streams heissen bewusst nicht hso_students und hso_personal: der
+    File-Connector schreibt hso_students schon nach dest-postgres, und zwei
+    Connections auf denselben Stream im selben Ziel verdoppeln die Tabelle
+    (Befund 27).
+    """
+    _, ziel, streams = c.gewuenschte_connections(SRC, DST)["HSO Accounts nach PG"]
+
+    assert ziel == DST["HSO Dest PostgreSQL"]
+    assert sorted(s["name"] for s in streams) == ["hso_personal_accounts",
+                                                  "hso_student_accounts"]
+
+
+def test_die_account_streams_laufen_als_full_refresh():
+    _, _, streams = c.gewuenschte_connections(SRC, DST)["HSO Accounts nach PG"]
+
+    assert {s["syncMode"] for s in streams} == {c.FULL_REFRESH}
+
+
+def test_die_account_streams_heissen_nicht_wie_die_quelltabellen():
+    # Der Kern der Kollisionsvermeidung, explizit festgehalten.
+    _, _, streams = c.gewuenschte_connections(SRC, DST)["HSO Accounts nach PG"]
+    namen = {s["name"] for s in streams}
+
+    assert "hso_students" not in namen
+    assert "hso_personal" not in namen
+
+
 def test_keine_zwei_connections_schreiben_denselben_stream_in_dasselbe_ziel():
     """Sonst verdoppelt sich die Zieltabelle beim ersten Aufbau.
 

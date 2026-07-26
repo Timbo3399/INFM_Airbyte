@@ -69,9 +69,9 @@ Der Aufbau ist von Anfang bis Ende skriptgesteuert, in drei Schritten:
 |---|---|---|
 | 1 | `install` | Datenbank-Stack läuft, zehn Quelltabellen sind gefüllt |
 | 2 | `setup-airbyte` | Airbyte Community Edition im kind-Cluster, UI erreichbar |
-| 3 | `setup-szenarien` | Mapping, Bilder, Airbyte-Objekte, sieben Syncs und dbt sind durch |
+| 3 | `setup-szenarien` | Mapping, Bilder, Airbyte-Objekte, acht Syncs und dbt sind durch |
 
-Schritt 3 arbeitet fünfzehn Schritte in einer Reihenfolge ab, die nicht beliebig ist,
+Schritt 3 arbeitet siebzehn Schritte in einer Reihenfolge ab, die nicht beliebig ist,
 und überspringt, was schon steht. Der Weg von `git clone` bis zum vollständigen
 Demo-Zustand steht in [installation-guide.md](installation-guide.md).
 
@@ -99,7 +99,7 @@ Skripte, dazu die Sollwerte selbst und die zwingende Reihenfolge der Aufbauschri
 | 1 | Testdaten einspielen | vollständig verifiziert. PG nach PG und PG nach MySQL, je `fm_gebaeude` 25 und `k_plz` 34.172. Dazu `hso_students` mit 5.052 Zeilen über den File-Connector, wo `COPY` keine einzige Zeile schaffte |
 | 2 | Facility Management | umgesetzt und verifiziert. Airbyte bringt die Rohtabellen nach dest-postgres, dbt baut `fm_raeume` mit 1.244 Räumen und 52.009 m², Airbyte reicht das Ergebnis nach MySQL weiter. Vier dbt-Tests grün |
 | 3 | Bilder als BLOB | durchgeführt, mit dem deutlichsten Befund der Evaluation. 1.100 Bilder geladen (8.015 kB) und byteidentisch wieder exportiert. Der Sync nach MySQL legt 1.100 Zeilen an und lässt die Bildspalte in allen leer |
-| 4 | Mapping Studenten und Personal | umgesetzt und verifiziert. 5.922 eindeutige Accounts nach HSO-Schema inklusive Kollisionszähler, in der Quelle geprüft |
+| 4 | Mapping Studenten und Personal | umgesetzt und verifiziert. 5.922 eindeutige Accounts nach HSO-Schema inklusive Kollisionszähler, dazu je eine Zieltabelle in dest-postgres: `hso_student_accounts` mit 5.052 und `hso_personal_accounts` mit 870 Zeilen, alle mit `user_id` und E-Mail |
 | 5 | IdM-System | umgesetzt und verifiziert. View `hso_user` nach MySQL, Incremental mit Dedup über Cursor `updatedat` und Primärschlüssel `user_id`. 5.922 Zeilen mit 5.922 verschiedenen `user_id`, alle mit Bildverknüpfung |
 | 6a | REST-API auf die Zieldaten | erfüllt über PostgREST, per GET verifiziert |
 | 6b | SOAP gegen HISinOne | offen, hängt am externen Zugang |
@@ -253,6 +253,8 @@ Vorverarbeitung.
 
 **Szenario 6a Schreibzugriff.** Verifiziert ist der lesende Zugriff über PostgREST.
 Insert und Update über JWT sind konzipiert, aber nicht durchgeführt.
+
+Damit sind Szenario 1 bis 5 und 6a vollständig umgesetzt und verifiziert.
 
 **Betriebsfragen**, die lokal nicht zu beantworten waren: Backup und
 Wiederherstellung des Airbyte-Zustands, Rechte- und Rollenkonzept, Verhalten bei

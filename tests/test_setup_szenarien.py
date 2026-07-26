@@ -89,6 +89,20 @@ def test_der_zweite_connections_durchgang_ruft_dasselbe_skript():
     assert _schritt("connections-raeume").ziel == _schritt("connections").ziel
 
 
+def test_die_account_sichten_brauchen_die_accounts():
+    assert _pos("accounts") < _pos("accounts-views")
+
+
+def test_die_account_sichten_liegen_vor_den_connections():
+    # Airbyte muss die Views beim Anlegen der Connection kennen, sonst wird sie
+    # vertagt und der Sync findet nichts (Befund 28).
+    assert _pos("accounts-views") < _pos("connections")
+
+
+def test_der_account_sync_kommt_nach_den_connections():
+    assert _pos("connections") < _pos("sync-accounts")
+
+
 def test_die_bilder_liegen_vor_der_view():
     """CREATE OR REPLACE VIEW prueft die referenzierten Tabellen sofort.
 

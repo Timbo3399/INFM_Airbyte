@@ -111,6 +111,14 @@ SOLLWERTE = [
                       WHERE COALESCE(user_id, '') <> ''
                 ) AS alle"""),
 
+    # Szenario 4, Schritt 3: die Accounts als eigene Zieltabellen je Gruppe.
+    # Getrennte Streams, damit sie nicht mit hso_students aus dem File-Connector
+    # in derselben Zieltabelle landen (Befund 27).
+    Pruefung("Sz4", "hso_student_accounts in dest-postgres", 5052, "dest_pg",
+             "SELECT count(*) FROM hso_student_accounts"),
+    Pruefung("Sz4", "hso_personal_accounts in dest-postgres", 870, "dest_pg",
+             "SELECT count(*) FROM hso_personal_accounts"),
+
     # Szenario 5: IdM-Sync mit Deduplizierung (Befund 31).
     Pruefung("Sz5", "hso_user Zeilen in MySQL", 5922, "dest_mysql",
              "SELECT count(*) FROM hso_user"),
