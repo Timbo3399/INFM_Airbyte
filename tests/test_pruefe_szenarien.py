@@ -76,6 +76,26 @@ def test_sollwerte_szenario_4():
     assert _soll("Sz4", "eindeutige user_id").erwartet == 5922
 
 
+def test_sollwerte_szenario_4_im_ziel():
+    # Schritt 3 des Szenarios: die Accounts als eigene Zieltabellen je Gruppe.
+    # 5.052 Studierende und 870 Personal, beide Zahlen in ergebnisse.md belegt.
+    assert _soll("Sz4", "hso_student_accounts").erwartet == 5052
+    assert _soll("Sz4", "hso_personal_accounts").erwartet == 870
+
+
+def test_die_ziel_pruefungen_von_szenario_4_lesen_dest_postgres():
+    for teil in ("hso_student_accounts", "hso_personal_accounts"):
+        assert _soll("Sz4", teil).quelle == "dest_pg"
+
+
+def test_die_summe_der_beiden_gruppen_ergibt_die_gesamtzahl():
+    # Haelt zusammen, was sonst auseinanderlaufen kann: 5.052 + 870 = 5.922.
+    einzeln = (_soll("Sz4", "hso_student_accounts").erwartet
+               + _soll("Sz4", "hso_personal_accounts").erwartet)
+
+    assert einzeln == _soll("Sz4", "user_id gesetzt").erwartet
+
+
 def test_sollwerte_szenario_5():
     assert _soll("Sz5", "hso_user Zeilen").erwartet == 5922
     assert _soll("Sz5", "verschiedene user_id").erwartet == 5922
@@ -181,6 +201,43 @@ def test_alles_ok_ist_falsch_sobald_eine_pruefung_fehlt():
 
 def test_alles_ok_bei_leerer_liste():
     assert p.alles_ok([]) is True
+
+
+def test_ratschlag_vermutet_bei_lauter_fehlern_den_stack():
+    # Wenn KEINE einzige Messung durchkommt, liegt es fast immer daran, dass die
+    # Container nicht laufen. Der Hinweis auf setup_szenarien fuehrt dann in die
+    # falsche Richtung, und in einer Praesentation kostet das Minuten.
+    a = p.Pruefung("Sz1", "a", 1, "dest_pg", "x")
+    b = p.Pruefung("Sz2", "b", 2, "dest_mysql", "x")
+
+    text = p.ratschlag([(a, None), (b, None)])
+
+    assert "start" in text.lower()
+    assert "setup_szenarien" not in text
+
+
+def test_ratschlag_verweist_bei_einzelnen_luecken_auf_den_aufbau():
+    a = p.Pruefung("Sz1", "a", 1, "dest_pg", "x")
+    b = p.Pruefung("Sz2", "b", 2, "dest_pg", "x")
+
+    text = p.ratschlag([(a, 1), (b, None)])
+
+    assert "setup_szenarien" in text
+
+
+def test_ratschlag_unterscheidet_null_messung_von_falschem_wert():
+    # Eine gemessene, aber abweichende Zahl ist kein Stack-Problem.
+    a = p.Pruefung("Sz1", "a", 1, "dest_pg", "x")
+
+    text = p.ratschlag([(a, 99)])
+
+    assert "setup_szenarien" in text
+
+
+def test_ratschlag_ist_leer_wenn_alles_stimmt():
+    a = p.Pruefung("Sz1", "a", 1, "dest_pg", "x")
+
+    assert p.ratschlag([(a, 1)]) == ""
 
 
 def test_zusammenfassung_zaehlt_treffer_und_fehler():

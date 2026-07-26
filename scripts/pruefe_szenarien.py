@@ -111,6 +111,14 @@ SOLLWERTE = [
                       WHERE COALESCE(user_id, '') <> ''
                 ) AS alle"""),
 
+    # Szenario 4, Schritt 3: die Accounts als eigene Zieltabellen je Gruppe.
+    # Getrennte Streams, damit sie nicht mit hso_students aus dem File-Connector
+    # in derselben Zieltabelle landen (Befund 27).
+    Pruefung("Sz4", "hso_student_accounts in dest-postgres", 5052, "dest_pg",
+             "SELECT count(*) FROM hso_student_accounts"),
+    Pruefung("Sz4", "hso_personal_accounts in dest-postgres", 870, "dest_pg",
+             "SELECT count(*) FROM hso_personal_accounts"),
+
     # Szenario 5: IdM-Sync mit Deduplizierung (Befund 31).
     Pruefung("Sz5", "hso_user Zeilen in MySQL", 5922, "dest_mysql",
              "SELECT count(*) FROM hso_user"),
@@ -173,6 +181,25 @@ def zusammenfassung(ergebnisse) -> str:
     gesamt = len(ergebnisse)
     ok = sum(1 for p, g in ergebnisse if bewerte(p.erwartet, g) == "ok")
     return f"{gesamt} Pruefungen, {ok} ok, {gesamt - ok} fehlt"
+
+
+def ratschlag(ergebnisse) -> str:
+    """Was als naechstes zu tun ist, oder "" wenn alles stimmt.
+
+    Zwei Fehlerbilder, die nach demselben aussehen: keine Messung kommt durch
+    (dann laeuft der Stack nicht), oder einzelne Sollzustaende fehlen (dann fehlt
+    ein Aufbauschritt). Der falsche Hinweis kostet in einer Demo Minuten.
+    """
+    offen = [(p, g) for p, g in ergebnisse if bewerte(p.erwartet, g) != "ok"]
+    if not offen:
+        return ""
+    if all(g is None for _, g in ergebnisse):
+        return ("Keine einzige Messung kam durch. Laeuft der Stack?\n"
+                "    docker ps\n"
+                "    .\\scripts\\start.ps1      (Linux/macOS: bash scripts/start.sh)")
+    return ("Sollwerte stehen in docs/ergebnisse.md."
+            " Fehlt ein Zielzustand, hilft meist:\n"
+            "    python scripts/setup_szenarien.py")
 
 
 KOPF = ("Szenario", "Pruefung", "erwartet", "gefunden", "Status")
@@ -305,10 +332,9 @@ def main(argv):
         print()
     print(zusammenfassung(ergebnisse))
 
-    if not alles_ok(ergebnisse):
-        print("\nSollwerte stehen in docs/ergebnisse.md."
-              " Fehlt ein Zielzustand, hilft meist:")
-        print("    python scripts/setup_szenarien.py")
+    hinweis = ratschlag(ergebnisse)
+    if hinweis:
+        print("\n" + hinweis)
         return 1
     return 0
 

@@ -6,7 +6,8 @@
 
 ## Ergebnis
 
-Fünf von sechs Szenarien sind umgesetzt und gegen das laufende System verifiziert.
+Szenario 1 bis 5 und 6a sind umgesetzt und gegen das laufende System verifiziert,
+nur 6b (SOAP) hängt am externen Zugang.
 Die wichtigsten Befunde:
 
 - **BLOBs gehen still verloren.** Der Sync von 1.100 Bildern aus einer BYTEA-Spalte
@@ -200,7 +201,8 @@ INFM_Airbyte/
 │   ├── source/
 │   │   ├── 00_tables.sql       ← Tabellen-Schema für source-postgres
 │   │   ├── 01_load_data.sql    ← nur Doku-Hinweis (COPY entfernt, s. u.)
-│   │   ├── views/hso_user.sql  ← IdM-Sicht für Szenario 5 (liest hso_images)
+│   │   ├── views/               ← hso_user.sql (IdM-Sicht, Szenario 5) und
+│   │   │                          hso_accounts.sql (Account-Sichten, Szenario 4)
 │   │   └── data/               ← Quelldateien für den File-Connector (/local-Mount im
 │   │                              kind-Node): hso_students, fm_gebaeude, fm_inst,
 │   │                              k_plz, rooms.xltx, hso_students_large (Messreihen)
@@ -249,7 +251,7 @@ INFM_Airbyte/
     ├── install.ps1 · install.sh        ← Schritt 1: DB-Stack + Testdaten
     ├── setup-airbyte.ps1 · .sh         ← Schritt 2: Airbyte via abctl installieren
     ├── setup-szenarien.ps1 · .sh       ← Schritt 3: Mapping, Bilder, Syncs, dbt
-    ├── setup_szenarien.py              ← die 15 Schritte, idempotent (von den Wrappern gerufen)
+    ├── setup_szenarien.py              ← die 17 Schritte, idempotent (von den Wrappern gerufen)
     ├── pruefe_szenarien.py             ← prüft je Szenario den Sollzustand, Tabelle + Exit-Code
     ├── start.ps1 · start.sh            ← Stack starten
     ├── stop.ps1 · stop.sh              ← Stack stoppen (-v für vollständigen Reset)
@@ -268,7 +270,8 @@ INFM_Airbyte/
     ├── mapping/                        ← Szenario 4 und 5
     │   ├── fill_random_names.py        ← Namensfelder deterministisch befüllen
     │   ├── generate_accounts.py        ← Account-IDs nach HSO-Schema
-    │   └── create_hso_user_view.py     ← IdM-Sicht anlegen
+    │   ├── create_account_views.py     ← Account-Sichten je Gruppe (Szenario 4)
+    │   └── create_hso_user_view.py     ← IdM-Sicht anlegen (Szenario 5)
     └── images/                         ← Szenario 3
         ├── load_images.py              ← 1.100 Bilder als BYTEA laden
         └── export_images.py            ← wieder als Dateien exportieren
