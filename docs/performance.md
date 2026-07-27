@@ -14,9 +14,9 @@ Anschließend werden experimentelle Performanceanalysen aufgezeigt, welche die v
 
 ### Skalierbarkeit und Flexibilität der Infrastruktur
   - Airbyte läuft modular in Containern (Jeder Sync läuft als eigener Docker-Container)
-  - Große **Ausfallsicherheit** durch die Containisierung und der damit verbundenen starken Prozessisolierung
+  - Große **Ausfallsicherheit** durch die Containerisierung und der damit verbundenen starken Prozessisolierung
   - **Flexibilität und Skalierbarkeit** durch Entkoppelung von Quelle und Ziel
-  - Performanceverbesserung bei großen Datenmengen durch **horizontale Skalierung** von Kubernetes
+  - Performanceverbesserung bei großen Datenmengen durch **horizontale und vertikale Skalierung** von Kubernetes
     - Hochsetzen der Limits für CPU und Arbeitsspeicher für die Hauptprozesse
     - Konfiguration der Worker-Replikate und der maximalen Sync-Workers für mehr Parallelität
     - Airbyte kann auch Daten komprimieren um eine bessere Netzwerkbandbreite und geringere Transferkosten zu erreichen
@@ -30,7 +30,16 @@ Anschließend werden experimentelle Performanceanalysen aufgezeigt, welche die v
       - Checkpointing und Sicherheitshandshakes mit Statemessages (siehe: Qualitätssicherung: State Messages)
       - Overhead durch JSON-Schema-Validierung besonders bei sehr breiten Tabellen
       - Breite Tabellen (=viele Spalten) belasten außerdem den Arbeitsspeicher stark
-
+  - Parallelisierung
+      - Airbyte arbeitet hochgradig parallel auf 3 Ebenen:
+            - Pipelining: Quell-Connector liest und streamt direkt über STDOUT, Airbyte nimmt es an und gibt es dem Ziel über STDIN weiter,.. (siehe auch State Management: quality_assurance.md)
+            - Paralleles Lesen
+                - Connection Pooling bei Datenbanken: Gleichzeitiges Öffnen meherer Datenbankverbindungen (2 bis 4 pro CPU-Kern) zur Verteilung der Abfragelast und Steigerung des Durchsatzes
+                - Multi-Threading bei Dateien (Chunk-based Reading): Zerlegung in Blöcken und Abarbeitung von mehreren Threads
+            - Paralleles Schreiben
+               - Bulk Insert & Batching: Daten werden in großen Paketen (Batches von 1.000 bis 10.000 Zeilen) parallel in die Zieldatenbank eingefügt statt Zeile für Zeile
+               - Cloud-Native Parallelisierung
+                            
 ## Experimentelle Performanceanalyse von Airbyte
 
 ### Testvorbereitung: 
@@ -85,17 +94,15 @@ Ein initialer Sync mit dem Mode: **Incremental** entspricht einem **Full refresh
 
 ### Auswertung
 
-Die Messreihen verdeutlichen, dass Airbyte, unabhängig vom Datenvolumen, einen erheblichen **Overhead** aufweist.
-Die Gesamtlaufzeit wird stark von diesem Overhead dominiert. In der Folge erweisen sich Incremental-Strategien bei sehr kleinen Datenmengen als relativ ineffizient bezüglich der Zeitdauer des Syncs: Selbst wenn nur 13 Datensätze übertragen werden, beträgt die reine Stream-Dauer (Replikationszeit) fast 30 Sekunden, was die Gesamtdauer künstlich verlängert.
-Außerdem fällt auf, dass die Gesamtdauer der Streams von 10-20.000 geänderten Datensätzen nahezu stagniert. (ca. 30 Sekunden).
-Bei größeren, sich regelmäßig änderenden Datensätzen ist die Incremental Strategie jedoch dennoch sehr sinnvoll, um das Netzwerk vor Überlastung zu schützen und die Performance insgesamt zu erhöhen.
+Die Messreihen verdeutlichen, dass Airbyte unabhängig vom Datenvolumen einen erheblichen Overhead aufweist. Die Gesamtlaufzeit wird stark von diesem Overhead dominiert. In der Folge erweisen sich Incremental-Strategien bei sehr kleinen Datenmengen als relativ ineffizient: Selbst wenn nur 10 Datensätze übertragen werden, beträgt die reine Stream-Dauer (Replikationszeit) über 27 Sekunden, was die Gesamtdauer künstlich verlängert. Außerdem fällt auf, dass die Gesamtdauer der Streams von 10 bis 20.000 geänderten Datensätzen nahezu stagniert (rund 30 Sekunden). Bei größeren, sich regelmäßig ändernden Datensätzen ist die Incremental Strategie sinnvoll, um das Netzwerk vor Überlastung zu schützen und die Performance insgesamt zu erhöhen.
 
-Das die Full Refresh teilweise sogar schneller ist liegt daran, dass hier komplexe und rechenintensive Operationen wegfallen, die bei den anderen Strategien notwendig sind. Beispielsweise muss für die Append Strategie im Ziel nach Duplikaten anhand des Primärschlüssels gesucht werden, um die alten Zeilen zu bereinigen. Für Full Refresh wird die ganze Tabelle im Ziel einfach komplett verworfen und mit den neuen Daten überschrieben. Außerdem kann anders wie bei den Incremental-Strategien, der State komplett ignoriert werden.  
+Incremental/Append hat in unserer Reihe die kürzesten Laufzeiten. Das liegt aber daran, dass dabei weniger Daten bewegt werden, nicht daran, dass der Modus schneller arbeitet. Bei gleicher Datenmenge dreht sich das Bild sogar leicht: für 100.000 Datensätze braucht Full refresh/Overwrite 38,08 s, Incremental/Append 39,42 s. Der Gewinn von Incremental liegt also im kleineren Delta.
 
-Die Strategie: **Incremental/Append** weißt insgesamt die geringste Streamdauer (Replication) auf.
-Außerdem ist nicht nur die Größe entscheidend, sondern auch die Anzahl der Spalten einer Tabelle.
-Bei einer höheren Anzahl an Spalten und nahezu äquivalenter Gesamtgröße dauert der Stream insgesamt dennoch länger.
-Bewährte Strategien sind hierbei: Die Verwendung von Skinny Tables und Vertikale Partitionierung.
+Für Szenario 5 ist die Zeile darüber wichtiger als der Vergleich Full refresh gegen Incremental: Incremental/Append + Deduped braucht bei 75.000 Datensätzen 82,47 s, der gleiche Lauf ohne Deduplizierung 39,67 s. Die Deduplizierung, die wir für hso_user brauchen, kostet also ungefähr das Doppelte.
+
+Neben der Datenmenge spielt auch die Spaltenzahl eine Rolle. Bei nahezu gleicher Gesamtgröße dauert ein Stream mit mehr Spalten länger.
+
+Zwei Einschränkungen zu den Zahlen. Der Wert für 50.000 Datensätze (49,53 s) liegt über dem für 75.000 (39,67 s) und 100.000 (39,42 s) und fällt damit aus der Reihe; eine Erklärung dafür haben wir nicht. Und jede Zeile ist eine Einzelmessung ohne Wiederholung. Unterschiede von wenigen Sekunden sollte man deshalb nicht überbewerten, belastbar sind nur die großen Effekte: der Grundoverhead von rund 27 Sekunden und die Verdopplung durch Deduped.
 
 
 ---

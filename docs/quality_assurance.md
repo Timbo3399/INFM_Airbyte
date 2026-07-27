@@ -51,11 +51,12 @@
           - Automatisierte Überwachung: z.B Monte Carlo oder Soda
  ## **Error Handling**
    - **Retry**
-          - Per Default: Bei Server Errors (HTTP 5xx) und zu viele Requests (HTTP 429) wird der Sync bis zu 5-mal wiederholt
+      - Per Default: Bei Server Errors (HTTP 5xx) und zu viele Requests (HTTP 429) wird der Sync bis zu 5-mal wiederholt
           - Retry mit **exponentiellen Backoff** (Automatische Drosselung des Datenabrufs: Verdoppelung der Wartezeit nach jedem Versuch),
       oder **selbst konfiguriert** zum Beispiel: Auslesen aus dem HTTP-Header wie Retry-After oder X-RateLimit-Reset
           - alle anderen Erros führen zu einem *Failed Read* 
           - Verhalten umfangreich konfigurierbar
+       - **Heartbeat**: Parameter *maxSecondsBetweenMessage* des Quell-Connectors gibt der Plattform an, wie viele Sekunden maximal zwischen zwei gesendeten Nachrichten liegen darf. Wird die Zeit überschritten kommt es zu einem Timeout und der Sync wird kontrolliert abgebrochen, um das dauerhafte Einfrieren zu verhindern. Der gesamte Sync-Job wird neugestartet (Retry). 
    - **AirbyteTraceMessages** : Damit Connectoren Metadaten über ihren Laufzeitstatus und ihre Leistung an die Plattform übermitteln können
         - **Strukturierte Fehlermeldungen**
              - **Interne** (für Entwickler: Stacktrace) vs. **externe** Meldung (für Anwender: z.B. ungültiger API-Schlüssel)
@@ -65,9 +66,8 @@
           - **Aufwands- und Volumenschätzung**: Information für Orchestrator, wie viele Daten in einem Sync voraussichtlich transportiert werden.
               - Schätzwerte für Datenmenge und Anzahl der Records, wird regelmäßig überschrieben
               - sinnvoll für Fortschrittsanzeige für den User
-    - **Hearbeat**: Parameter *maxSecondsBetweenMessage* des Quell-Connectors gibt der Plattform an, wie viele Sekunden maximal zwischen zwei gesendeten Nachrichten liegen darf. Wird die Zeit überschritten kommt es zu einem Timeout und der Sync wird kontrolliert abgebrochen, um das dauerhafte Einfrieren zu verhindern. Der gesamte Sync-Job wird neugestartet.
+   
 ## **State-Management**
-  - Connectoren speichern den Zustand (State) zur Fehlerwiederherstellung im korrekten Intervall
   - Mechanismus, der den Fortschritt einer Datenübertragung kontinuierlich speichert
   - **technische Umsetzung**
     - Während eines Syncs **liest** Source-Connector die Daten aus der Source und erzeugt einen Datenstream bestehend aus:
@@ -130,3 +130,12 @@
    - interne Metriken lassen sich über Exporter im Prometheus-Format bereitstellen
    - Mit Grafana lassen sich diese dann in Dashboards visualisieren (zum Beispiel für das Tracken von Latenzen)
    - Self-Managed Enterprise-Kunden können Airbyte so konfigurieren, dass Telemetriedaten direkt über einen OpenTelemetry-Collector an gängige Monitoring-Tools wie Datadog, Prometheus oder Grafana weitergeleitet werden.
+## Security 
+  - SSL/TLS Verschlüsselung für die sichere Übertragung der Daten
+  - Connectoren müssen bei externen Anfragen **HTTPS** verwenden
+  - **OAuth2** als sicherer Authentifizierungsstandard von vielen Connectoren unterstützt
+  - für zusätzliche Sicherheit: Support für SSH-Tunneling
+  - Starke AES-256-Bit-Verschlüsselung für alle gespeicherten Kundenmetadaten und Secrets (Zugangsdaten)
+  - PII-Maskierung (Personally Identifiable Information): Automatisches Hashing von sensiblen, personenbezogenen Daten direkt während des Transports durch die Pipeline
+  - **Enterprise-Version**: Role-Based Access Control (RBAC) zur granularen Steuerung von Berechtigungen
+  - Regulatorische Standards: Architektur ist konform mit strengen Datenschutzrichtlinien wie der DSGVO (GDPR) und HIPAA
