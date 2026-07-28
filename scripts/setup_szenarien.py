@@ -4,9 +4,8 @@ vollstaendigen Demo-Zustand her.
 
 Warum es dieses Skript gibt: install.ps1 laedt die zehn Quelltabellen,
 setup-airbyte.ps1 installiert Airbyte, und danach war Schluss. Wer dem
-Installationsguide folgte, landete bei einem leeren Airbyte. Die sieben
-Folgeschritte standen zwar in der Doku der einzelnen Szenarien, aber nirgends
-als ein Ablauf.
+Installationsguide folgte, landete bei einem leeren Airbyte. Die Folgeschritte
+standen zwar in der Doku der einzelnen Szenarien, aber nirgends als ein Ablauf.
 
 Aufgerufen wird das Skript ueber die Wrapper, die vorher noch die
 Voraussetzungen pruefen:
@@ -40,7 +39,7 @@ Die Reihenfolge ist nicht beliebig:
 Die Dauerangaben sind gemessen, nicht geschaetzt: einmal beim Aufbau von Null auf
 einem frisch installierten Airbyte, einmal auf warmem Stack. Wo die Werte
 auseinandergehen, steht der hoehere. Ein voller Aufbau von Null lag bei
-14 Minuten 31 Sekunden. Der grosse Posten sind die sieben Syncs mit ihrem
+14 Minuten 31 Sekunden. Der grosse Posten sind die acht Syncs mit ihrem
 Grundoverhead unabhaengig vom Datenvolumen (Befund 7 in docs/ergebnisse.md), die
 1.100 Bilder und die Schema-Erkennung beim Anlegen der Connections.
 """
