@@ -131,7 +131,7 @@ Stellt je Szenario Soll und Ist gegenüber. Alle Sollwerte sind in
 | [docs/airbyte-setup.md](docs/airbyte-setup.md) | Airbyte (abctl) installieren, Sources/Destinations |
 | [docs/airbyte_api.md](docs/airbyte_api.md) | Airbyte Public API: Token, Requests, Objekte per Skript |
 | [docs/etl-prozess.md](docs/etl-prozess.md) | Runbook: erster ETL-Prozess (mit Screenshot-Punkten) |
-| [docs/performance.md](docs/performance.md) | Messreihen zu den Sync-Strategien |
+| [docs/performance.md](docs/performance.md) | Airbyte Leistungsmerkmale und Messreihen zu den Sync-Strategien |
 | [docs/quality_assurance.md](docs/quality_assurance.md) | Vorgehen bei Tests und Qualitätssicherung |
 | [docs/call-notes-2026-06-16.md](docs/call-notes-2026-06-16.md) | Notizen zum Call: Sync-Modi, Messreihen, Editionen |
 | [docs/betreuer-feedback-2026-06-09.md](docs/betreuer-feedback-2026-06-09.md) | Betreuer-Feedback und unsere Reaktion |
@@ -224,7 +224,7 @@ INFM_Airbyte/
 │   ├── anforderungen.md        ← Kickoff-Anforderungen & Umsetzungsstand
 │   ├── testszenarien.md        ← die sechs Szenarien im Detail
 │   ├── dbt.md                  ← dbt als Transformationsschicht (Szenario 2)
-│   ├── performance.md          ← Messreihen zu den Sync-Strategien
+│   ├── performance.md          ← Airbyte Leistungsmerkmale und Messreihen zu den Sync-Strategien
 │   ├── quality_assurance.md    ← Vorgehen bei Tests und Qualitätssicherung
 │   ├── installation-guide.md   ← Installation von git clone bis Demo-Zustand
 │   ├── architektur.md          ← Architektur (Komponenten, Datenfluss, Netz)

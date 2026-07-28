@@ -32,13 +32,14 @@ Anschließend werden experimentelle Performanceanalysen aufgezeigt, welche die v
       - Breite Tabellen (=viele Spalten) belasten außerdem den Arbeitsspeicher stark
   - Parallelisierung
       - Airbyte arbeitet hochgradig parallel auf 3 Ebenen:
-            - Pipelining: Quell-Connector liest und streamt direkt über STDOUT, Airbyte nimmt es an und gibt es dem Ziel über STDIN weiter,.. (siehe auch State Management: quality_assurance.md)
-            - Paralleles Lesen
-                - Connection Pooling bei Datenbanken: Gleichzeitiges Öffnen meherer Datenbankverbindungen (2 bis 4 pro CPU-Kern) zur Verteilung der Abfragelast und Steigerung des Durchsatzes
-                - Multi-Threading bei Dateien (Chunk-based Reading): Zerlegung in Blöcken und Abarbeitung von mehreren Threads
-            - Paralleles Schreiben
-               - Bulk Insert & Batching: Daten werden in großen Paketen (Batches von 1.000 bis 10.000 Zeilen) parallel in die Zieldatenbank eingefügt statt Zeile für Zeile
-               - Cloud-Native Parallelisierung
+          - Pipelining: 
+            - Quell-Connector liest und streamt direkt über STDOUT, Airbyte nimmt es an und gibt es dem Ziel über STDIN weiter usw. (siehe auch State Management: [quality_assurance.md](quality_assurance.md))
+          - Paralleles Lesen
+              - Connection Pooling bei Datenbanken: Gleichzeitiges Öffnen meherer Datenbankverbindungen (2 bis 4 pro CPU-Kern) zur Verteilung der Abfragelast und Steigerung des Durchsatzes
+              - Multi-Threading bei Dateien (Chunk-based Reading): Zerlegung in Blöcken und Abarbeitung von mehreren Threads
+          - Paralleles Schreiben
+              - Bulk Insert & Batching: Daten werden in großen Paketen (Batches von 1.000 bis 10.000 Zeilen) parallel in die Zieldatenbank eingefügt statt Zeile für Zeile
+              - Cloud-Native Parallelisierung
                             
 ## Experimentelle Performanceanalyse von Airbyte
 

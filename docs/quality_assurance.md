@@ -75,22 +75,23 @@
         - **AirbyteStateMessages**: Checkpoints (= Lesezeichen), die den aktuellen Lesefortschritt der Quelle markieren.
                    Ausgabe (Daten + State)  kontinuierlich über ihre Standardausgabe STDOUT
           - **Transport durch die Airbyte-Plattform**
-                - Airbyte-Plattform nimmt Nachrichtenstream entgegeben
-                - Inhalt der Stream-Nachrichten ist für Airbyte selbst eine reine Black Box
-                - Airbyte reicht sie unverändert an das Ziel weiter: Daten + State wird in den Standardeingang (STDIN) des Ziel-Connectors geladen
+            - Airbyte-Plattform nimmt Nachrichtenstream entgegeben
+            - Inhalt der Stream-Nachrichten ist für Airbyte selbst eine reine Black Box
+            - Airbyte reicht sie unverändert an das Ziel weiter: Daten + State wird in den Standardeingang (STDIN) des Ziel-Connectors geladen
           - **Bestätigung durch das Zielsystem**
-                - strenger Sicherheitsmechanismus: Zielsystem darf State-Message erst wieder ausgegeben, wenn alle Datensätze die vor dieser Nachricht empfangen wurden erfolgreich und fehlerfrei in das Ziel geschrieben wurden
-                - Wenn erfolgreich geschrieben wurde wird das Zielsystem getriggert die selbe **AirbyteStateMessage** über seinen eigenen Standardausgang STDOUT als **Bestätigung** zurückzusenden
+            - strenger Sicherheitsmechanismus: Zielsystem darf State-Message erst wieder ausgegeben, wenn alle Datensätze die vor dieser Nachricht empfangen wurden erfolgreich und fehlerfrei in das Ziel geschrieben wurden
+            - Wenn erfolgreich geschrieben wurde wird das Zielsystem getriggert die selbe **AirbyteStateMessage** über seinen eigenen Standardausgang STDOUT als **Bestätigung** zurückzusenden
           - **Speicherung des finalen Checkpoints für den nächsten Lauf:**
-                - Airbyte-Plattform wartet auf die Rückmeldung des Zielsystems
-                - State wird nur dann für nächsten Durchlauf gespeichert, wenn er sowohl von der Quelle gesendet als auch vom Ziel bestätigt wurde
-                - Wenn Bestätigung empfangen wurde speichert Airbyte diesen Checkpoint in seiner Metdaten-Datenbank ab
-                - Bei nächstem Sync-Lauf übergibt Airbyte die zuletzt bestätigte State als Startpunkt an die Quelle
-                - wenn der State null ist muss die Source ganz von Beginn starten
+            - Airbyte-Plattform wartet auf die Rückmeldung des Zielsystems
+            - State wird nur dann für nächsten Durchlauf gespeichert, wenn er sowohl von der Quelle gesendet als auch vom Ziel bestätigt wurde
+            - Wenn Bestätigung empfangen wurde speichert Airbyte diesen Checkpoint in seiner Metdaten-Datenbank ab
+            - Bei nächstem Sync-Lauf übergibt Airbyte die zuletzt bestätigte State als Startpunkt an die Quelle
+            - wenn der State null ist muss die Source ganz von Beginn starten
       - **Wofür ist es wichtig?**
-          -wichtig bei **Inkrementeller Synchronisation**: welche Daten wurden das letzte mal übertragen und an welcher Stelle muss begonnen werden?
+          - wichtig bei **Inkrementeller Synchronisation**: 
+            - welche Daten wurden das letzte mal übertragen und an welcher Stelle muss beim nächsten Sync begonnen werden?
           - Rettung bei Abstürzen: zum Beispiel bei Netzwerkfehler oder Serverausfall
-              - Nach Neustart kann Sync dann ab dem letztem Checkpoint starten ohne ganz von vorne beginnen zu müssen
+            - Nach Neustart kann Sync dann ab dem letztem Checkpoint starten ohne ganz von vorne beginnen zu müssen
 
 
 # Monitoring
