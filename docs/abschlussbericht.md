@@ -71,14 +71,14 @@ Der Aufbau ist von Anfang bis Ende skriptgesteuert, in drei Schritten:
 | 2 | `setup-airbyte` | Airbyte Community Edition im kind-Cluster, UI erreichbar |
 | 3 | `setup-szenarien` | Mapping, Bilder, Airbyte-Objekte, acht Syncs und dbt sind durch |
 
-Schritt 3 arbeitet siebzehn Schritte in einer Reihenfolge ab, die nicht beliebig ist,
+Schritt 3 arbeitet achtzehn Schritte in einer Reihenfolge ab, die nicht beliebig ist,
 und überspringt, was schon steht. Der Weg von `git clone` bis zum vollständigen
 Demo-Zustand steht in [installation-guide.md](installation-guide.md).
 
 Dass es Schritt 3 gibt, ist selbst ein Ergebnis. Bis dahin endete der dokumentierte
 Installationsweg nach Schritt 2, und wer ihn befolgte, landete bei einem leeren
-Airbyte: die sieben Folgeschritte standen in der Dokumentation der einzelnen
-Szenarien, aber nirgends als Ablauf.
+Airbyte: die Folgeschritte standen in der Dokumentation der einzelnen Szenarien,
+aber nirgends als Ablauf.
 
 Dazu gehört ein zweites Werkzeug, [`scripts/pruefe_szenarien.py`](../scripts/pruefe_szenarien.py).
 Es gliedert die Prüfung wie [testszenarien.md](testszenarien.md) selbst, in Szenarien

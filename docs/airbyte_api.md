@@ -6,7 +6,7 @@ Neben der Verwendung von Airbyte über die UI, ist auch eine programmatische Int
 Es kann zum Beispiel in Kombination mit Orchestrierungstools wie Airflow genutzt werden.
 Im Folgenden sollen die ersten Schritte beschrieben werden. (siehe auch: <https://docs.airbyte.com/platform/using-airbyte/configuring-api-access>)
 
-## 1. Access Token holen ##
+## 1. Access Token holen
 
 Die Endpunkte der Airbyte Public API sind gesichert und erfordern eine Authentifizierung mittels **Bearer Token**.
 Um dieses Token zu erhalten, muss zunächst über User-->Application zu den Applications navigiert werden.
@@ -15,7 +15,7 @@ Falls defaultmäßig noch keine Application vorhanden ist, muss über "Create an
 
 **Es gibt zwei Möglichkeiten, um an den Access Token zu kommen:**
 
-### Token manuell über die UI holen ###
+### Token manuell über die UI holen
 
 Bei Applications muss auf "Default User Application" gehovert werden, dann erscheint der Button *"Generate access token"*
 
@@ -23,7 +23,7 @@ Bei Applications muss auf "Default User Application" gehovert werden, dann ersch
 
 ![Airbyte-API Access-Token from UI](../pictures/14-Airbyte-API-Access-Token.png)
 
-### Token über die Kommandozeile holen ###
+### Token über die Kommandozeile holen
 
 Mit folgendem Request, kann sich der Token programmatisch geholt werden.
 
@@ -53,7 +53,7 @@ Bei Erfolg hält man einen Response mit dem Access-Token in folgender Form:
 
 **Der Token expired nach 15 Minuten. Anschließend muss über die UI oder die Konsole erst ein neuer Token generiert werden.**
 
-## 2. API-Requests ###
+## 2. API-Requests
 
 Der generierte Access-Token muss anschließend für alle Requests zur Authentifizierung verwendet werden.
 
@@ -93,13 +93,18 @@ curl --request GET \
 }
 ```
 
+> **Nicht stolpern über den Port im `next`-Feld.** Airbyte gibt dort seinen
+> cluster-internen Port `8001` aus. Erreichbar ist die API von außen ausschließlich
+> über **`http://localhost:8000/api/public/v1`**, denselben Port wie die UI.
+
 Auf diese Weise lässt sich auch Automatisierung umsetzen.
 
-## 4. Objekte per Skript anlegen
+## 3. Objekte per Skript anlegen
 
 Genau das macht [`scripts/airbyte/setup_objects.py`](../scripts/airbyte/setup_objects.py):
-es legt die fünf Sources und zwei Destinations über die API an, statt sie in der UI
-zusammenzuklicken.
+es legt die sechs Sources und zwei Destinations über die API an, statt sie in der UI
+zusammenzuklicken. Die Connections kommen aus
+[`setup_connections.py`](../scripts/airbyte/setup_connections.py), acht an der Zahl.
 
 ```powershell
 python scripts/airbyte/setup_objects.py

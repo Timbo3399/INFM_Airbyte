@@ -123,9 +123,11 @@
               "streamName" : "fm_stamm"
             } ]
           }
+          ```
+
     - Logs über die Airbyte API auszulesen ist aktuell noch nicht möglich
 ## **Alerting**: integriertes System für Notifications über verschiedene Events
-   - Fehlgeschlagener/Erfolreicher Sync, Schema-Änderung, Verbindungsausfälle,..
+   - Fehlgeschlagener/erfolgreicher Sync, Schema-Änderung, Verbindungsausfälle,..
    - Benachrichtigung über Email oder Webhook (z.B. Slack)
 ## **Erweiterte System-Metriken** lassen sich in professionelle Monitoring-Stacks integrieren
    - interne Metriken lassen sich über Exporter im Prometheus-Format bereitstellen

@@ -36,7 +36,7 @@ Offizielle Doku: <https://docs.airbyte.com/platform/using-airbyte/getting-starte
 
 ## 1. abctl installieren
 
-`abctl` ist Airbybes offizielles CLI-Tool. Es installiert und verwaltet Airbyte in einem
+`abctl` ist Airbytes offizielles CLI-Tool. Es installiert und verwaltet Airbyte in einem
 lokalen Kubernetes-Cluster (Kind), der automatisch in Docker Desktop laeuft.
 Offizielle Referenz: <https://docs.airbyte.com/platform/deploying-airbyte/abctl>
 
@@ -145,17 +145,23 @@ abctl local credentials --password MeinNeuesPasswort123
 >
 > Das lohnt sich vor allem nach einem `abctl local uninstall`, weil die
 > Airbyte-Konfiguration im kind-Cluster liegt und dabei verloren geht. Details:
-> [airbyte_api.md](airbyte_api.md#4-objekte-per-skript-anlegen).
+> [airbyte_api.md](airbyte_api.md#3-objekte-per-skript-anlegen).
 
 ### Uebersicht aller Sources
 
 | Name in Airbyte | Typ | Verbindung |
 |-----------------|-----|-----------|
 | `HSO Source PostgreSQL` | Postgres | `host.docker.internal:5433` |
+| `HSO Transform PostgreSQL` | Postgres | `host.docker.internal:5434` (die Ziel-DB als Quelle, siehe Hinweis) |
 | `HSO CSV k_plz` | File (local) | `/local/k_plz.csv` |
 | `HSO CSV fm_gebaeude` | File (local) | `/local/fm_gebaeude.csv` |
 | `HSO CSV fm_inst` | File (local) | `/local/fm_inst.csv` |
 | `HSO CSV hso_students` | File (local) | `/local/hso_students.csv` |
+
+> **Warum die Ziel-DB auch als Source?** In `dest-postgres` baut dbt die Tabelle
+> `fm_raeume` (Szenario 2, Teilaufgabe B). Von dort muss sie weiter nach MySQL, und
+> dafuer braucht Airbyte die Ziel-DB als Quelle. Die Felder sind dieselben wie bei
+> `HSO Dest PostgreSQL` in Abschnitt 6, nur als Source angelegt.
 
 ---
 
@@ -198,18 +204,20 @@ Nach erfolgreichem Setup sind folgende Streams verfuegbar:
 |--------|--------|
 | `fm_gebaeude` | Gebaeude der Hochschule (25 Zeilen) |
 | `fm_inst` | Institute / Org-Einheiten (~2.080 Zeilen) |
-| `fm_stamm` | Raumstammdaten (Tabelle vorhanden, aktuell ohne Daten) |
+| `fm_stamm` | Raumstammdaten (1.244 Zeilen, via ETL-Mapping aus `rooms.xltx` durch [`load_fm_stamm.py`](../scripts/load_fm_stamm.py)) |
 | `k_plz` | PLZ-Verzeichnis (~34.000 Zeilen) |
 | `hso_students` | 5.052 Zeilen. Die CSV ist pipe-getrennt mit Pipes in einem gequoteten Feld und wird von [`load_hso_students.py`](../scripts/load_hso_students.py) geladen; zusätzlich über den File-Connector verfügbar (Abschnitt 7) |
 | `fm_rna` | Raumnutzungsarten (~380 Zeilen) |
 | `hso_personal` | Personal anonymisiert (~870 Zeilen) |
 
-> Die relationalen Quell-Tabellen werden nach dem Stackstart durch tolerante
+> Die relationalen Quell-Tabellen werden nach dem Stackstart durch sieben tolerante
 > Python-Loader gefuellt (laufen automatisch in `install.ps1`, Host-Python ODER
 > Docker-Fallback): `load_json.py` (fm_rna, hso_personal), `load_fm_inst.py`,
-> `load_fm_gebaeude.py`, `load_k_plz.py`.
-> `hso_students` ist ausgenommen (CSV strukturell defekt) und wird unten als
-> File-Connector-Quelle eingebunden.
+> `load_fm_gebaeude.py`, `load_k_plz.py`, `load_lookups.py` (anredetitel,
+> k_hochschule, k_res), `load_hso_students.py` und `load_fm_stamm.py`.
+> `hso_students` galt zunaechst als nicht ladbar; die CSV ist pipe-getrennt mit
+> Pipes in einem gequoteten Feld und wird von `load_hso_students.py` vollstaendig
+> geladen. Zusaetzlich ist sie unten als File-Connector-Quelle eingebunden.
 
 ---
 
@@ -425,7 +433,7 @@ Alle CSV-Sources verwenden **Storage Provider: `local: Local Filesystem (limited
 
 ---
 
-## 8. Nuetzliche abctl-Befehle
+## 9. Nuetzliche abctl-Befehle
 
 ```powershell
 # Status pruefen

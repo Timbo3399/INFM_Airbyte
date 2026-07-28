@@ -41,7 +41,7 @@ Uns ist das einmal passiert, und alle sieben Objekte mussten von Hand neu angele
 werden. Airbyte bringt dafür keine Export- oder Backup-Funktion mit.
 
 Lösbar ist es über die Public API: [`scripts/airbyte/setup_objects.py`](../scripts/airbyte/setup_objects.py)
-legt die Objekte idempotent an, siehe [airbyte_api.md](airbyte_api.md#4-objekte-per-skript-anlegen).
+legt die Objekte idempotent an, siehe [airbyte_api.md](airbyte_api.md#3-objekte-per-skript-anlegen).
 Für einen Produktivbetrieb heißt das aber: die Airbyte-Konfiguration gehört als Code
 versioniert, per API-Skript oder über den Terraform-Provider. Wer sich auf die UI
 verlässt, hat seinen Stand nur im Cluster liegen.

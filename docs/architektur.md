@@ -19,9 +19,10 @@ ASCII-Diagramm in Abschnitt 3 ist die Textfassung davon.
 | Ziel-PostgreSQL | `hso_dest_postgres` | `postgres:15-alpine` | Airbyte-Ziel | `5434` → 5432 |
 | Ziel-MySQL | `hso_dest_mysql` | `mysql:8.0` | Airbyte-Ziel | `3306` → 3306 |
 | File-Server | `hso_fileserver` | `nginx:alpine` | HTTP-Browsing der CSV-Flatfiles (http://localhost:8888); der File-Connector selbst nutzt den `/local`-Mount, nicht diesen Server | `8888` → 80 |
-| Airbyte | (kind-Cluster) | via `abctl` | ETL-Plattform / UI | `8000` (UI) |
+| PostgREST | `hso_postgrest` | `postgrest/postgrest:v12.2.3` | REST-API auf die Ziel-DB (Szenario 6a), z. B. `GET /k_plz?limit=5` | `3000` → 3000 |
+| Airbyte | (kind-Cluster) | via `abctl` | ETL-Plattform / UI + Public API unter `/api/public/v1` | `8000` (UI und API) |
 
-Die vier erstgenannten Container werden über `docker-compose.yml` verwaltet. Airbyte wird **separat** über `abctl` installiert (eigener kind-Kubernetes-Cluster in Docker Desktop) und über das gemeinsame Netzwerk angebunden.
+Die fünf erstgenannten Container werden über `docker-compose.yml` verwaltet. Airbyte wird **separat** über `abctl` installiert (eigener kind-Kubernetes-Cluster in Docker Desktop) und über das gemeinsame Netzwerk angebunden.
 
 ## 3. Netzwerk & Erreichbarkeit
 
@@ -50,7 +51,8 @@ Die vier erstgenannten Container werden über `docker-compose.yml` verwaltet. Ai
 ## 4. Datenfluss (ETL)
 
 1. **Extract:** Airbyte liest aus der Source-PostgreSQL (Stream pro Tabelle) bzw. aus CSV-Flatfiles über den File-Connector.
-2. **Load/Transform:** Airbyte schreibt in die Ziel-DBs (PostgreSQL/MySQL). Transformationen/Normalisierung erfolgen je nach Szenario im Ziel (bzw. perspektivisch via dbt).
+2. **Load:** Airbyte schreibt die Rohdaten in die Ziel-DBs (PostgreSQL/MySQL), unverändert.
+3. **Transform:** Transformationen passieren **nach** dem Load in der Ziel-DB, mit dbt als eigenem Schritt. Airbyte 2.1.1 führt dbt nicht mehr selbst aus (siehe [dbt.md](dbt.md)). Szenario 2 zeigt den Ablauf: Sync der Rohtabellen → `dbt run` baut `fm_raeume` → zweiter Sync reicht das Ergebnis nach MySQL weiter.
 
 Die **Befüllung der Source-DB** erfolgt nicht durch Airbyte, sondern vorab durch tolerante Python-Loader (siehe Kap. 6), da die Roh-CSVs unsauber sind.
 

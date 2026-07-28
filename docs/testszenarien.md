@@ -2,12 +2,13 @@
 
 Ziel: Evaluierung von Airbyte als ETL-Tool für die Hochschul-IT (Ersatz für Talend).
 
-> **Umsetzungsstand (live verifiziert, Stand 06.06.2026):**
-> - **Szenario 1** ist vollständig umgesetzt: PG→PG **und** PG→MySQL (je fm_gebaeude 25 / k_plz 34.172),
->   File→PG `hso_students` **5.052 Zeilen** (defekte CSV, an der `COPY` scheiterte).
-> - **Szenario 6a** ist umgesetzt, PostgREST liefert REST auf `destdb` (`GET localhost:3000/k_plz`).
-> - **Szenario 2, 3, 4 und 5** sind teilweise umgesetzt oder offen. Stand und Blocker je Szenario stehen unten bzw. in
->   [anforderungen.md](anforderungen.md).
+> **Umsetzungsstand (live verifiziert, Stand 25.07.2026):**
+> - **Szenario 1 bis 5 und 6a** sind umgesetzt und gegen das laufende System verifiziert.
+>   Die Zahlen je Szenario stehen unten, nachrechnen lässt sich alles mit
+>   `python scripts/pruefe_szenarien.py`.
+> - **Szenario 6b (SOAP gegen HISinOne)** ist offen, der externe Zugang steht aus.
+> - Die Befunde aus diesen Läufen sind in [ergebnisse.md](ergebnisse.md) gesammelt,
+>   der Abgleich gegen die Kickoff-Anforderungen in [anforderungen.md](anforderungen.md).
 
 ---
 
@@ -335,7 +336,7 @@ CREATE TABLE hso_user (
 
 > **Aufwand beachten:** Der Dedup-Modus kostet in unseren Messungen etwa das Doppelte an
 > Laufzeit gegenüber Incremental/Append ohne Dedup (82,47 s statt 39,67 s bei 75.000 Sätzen,
-> siehe [call-notes-2026-06-16.md](call-notes-2026-06-16.md)).
+> siehe [performance.md](performance.md)).
 
 **Änderungs-Test:**
 ```sql
