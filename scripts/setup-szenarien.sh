@@ -145,10 +145,10 @@ pruef_code=$?
 echo
 echo "  ==================================================="
 if [ "$pruef_code" -eq 0 ]; then
-  echo "  Demo-Zustand steht, alle Pruefungen stimmen."
+  echo "  Demo-Zustand steht, jedes gepruefte Szenario ist erfuellt."
 else
-  echo "  Es fehlt noch etwas, siehe Tabelle oben."
-  echo "  Die Sollwerte sind in docs/ergebnisse.md belegt."
+  echo "  Mindestens ein Szenario ist nicht erfuellt, siehe Tabelle oben."
+  echo "  Unter 'Offen' steht je Teilaufgabe das Kommando, das sie herstellt."
 fi
 cat <<EOF
 
