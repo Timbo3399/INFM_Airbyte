@@ -33,6 +33,7 @@ Die Reihenfolge ist nicht beliebig:
   * die View braucht auch die Bilder: sie liest hso_images, und
     CREATE OR REPLACE VIEW prueft die referenzierten Tabellen sofort
   * der IdM-Sync braucht die Bilder, sonst bleibt image_id im Ziel leer
+  * der Bild-Export braucht die geladenen Bilder, er liest sie aus der DB
   * dbt braucht den FM-Sync, denn es baut fm_raeume aus fm_stamm im Ziel
   * der Sync von fm_raeume nach MySQL braucht dbt
 
@@ -73,62 +74,48 @@ class Schritt:
     pruefungen: tuple    # alle erfuellt bedeutet: Schritt ist erledigt
 
 
-def _soll(szenario: str, teil: str):
-    """Sollwert aus pruefe_szenarien holen, damit er nur an einer Stelle steht."""
-    treffer = [p for p in pz.SOLLWERTE
-               if p.szenario == szenario and teil in p.beschreibung]
-    if len(treffer) != 1:
-        raise ValueError(f"{szenario}/{teil}: {len(treffer)} Treffer in SOLLWERTE")
-    return treffer[0]
+def _soll(id: str):
+    """Sollwert aus pruefe_szenarien holen, damit er nur an einer Stelle steht.
+
+    Die Suche laeuft ueber die stabile Id der Pruefung. Frueher stand hier ein
+    Teilstring der Beschreibung, was hielt, solange keine zweite Pruefung
+    denselben Tabellennamen trug: seit das Ziel MySQL mitgeprueft wird, gibt es
+    'fm_gebaeude' zweimal, und die Suche waere beim Import mehrdeutig geworden.
+    """
+    return pz.soll(id)
 
 
 # Zusaetzliche Messpunkte, die kein Szenario-Sollwert sind, sondern nur die
-# Frage beantworten: ist dieser Schritt schon gelaufen? Alle Zahlen sind in
-# docs/ergebnisse.md belegt (Befunde 2, 30, 31).
-NAMEN_GESETZT = pz.Pruefung(
-    "Sz4", "Studierende mit Nachname", 5052, "source_pg",
-    "SELECT count(*) FROM hso_students WHERE COALESCE(surname, '') <> ''")
-PERSONAL_GESETZT = pz.Pruefung(
-    "Sz4", "Personal mit Nachname", 870, "source_pg",
-    "SELECT count(*) FROM hso_personal WHERE COALESCE(nachname, '') <> ''")
+# Frage beantworten: ist dieser Schritt schon gelaufen? Es sind die Sichten in
+# der Quelle; die Szenarien pruefen, was im Ziel ankommt. Die Zahlen sind in
+# docs/testszenarien.md belegt (Szenario 4, Schritt 3, und Szenario 5).
 VIEW_DA = pz.Pruefung(
     "Sz5", "View hso_user in der Quelle", 5922, "source_pg",
-    "SELECT count(*) FROM hso_user")
+    "SELECT count(*) FROM hso_user", id="setup-view-hso-user")
 STUDENT_VIEW_DA = pz.Pruefung(
     "Sz4", "View hso_student_accounts in der Quelle", 5052, "source_pg",
-    "SELECT count(*) FROM hso_student_accounts")
+    "SELECT count(*) FROM hso_student_accounts", id="setup-view-student-accounts")
 PERSONAL_VIEW_DA = pz.Pruefung(
     "Sz4", "View hso_personal_accounts in der Quelle", 870, "source_pg",
-    "SELECT count(*) FROM hso_personal_accounts")
-STUDENTS_IM_ZIEL = pz.Pruefung(
-    "Sz1", "hso_students in dest-postgres", 5052, "dest_pg",
-    "SELECT count(*) FROM hso_students")
-FM_STAMM_IM_ZIEL = pz.Pruefung(
-    "Sz2", "fm_stamm in dest-postgres", 1244, "dest_pg",
-    "SELECT count(*) FROM fm_stamm")
-GEBAEUDE_IN_MYSQL = pz.Pruefung(
-    "Sz1", "fm_gebaeude in dest-mysql", 25, "dest_mysql",
-    "SELECT count(*) FROM fm_gebaeude")
-PLZ_IN_MYSQL = pz.Pruefung(
-    "Sz1", "k_plz in dest-mysql", 34172, "dest_mysql",
-    "SELECT count(*) FROM k_plz")
+    "SELECT count(*) FROM hso_personal_accounts", id="setup-view-personal-accounts")
 
 
 SCHRITTE = [
     Schritt("namen", "Zufallsnamen in hso_students und hso_personal setzen",
             "python", "scripts/mapping/fill_random_names.py", "~2 s",
-            (NAMEN_GESETZT, PERSONAL_GESETZT)),
+            (_soll("sz4-nachname-stud"), _soll("sz4-nachname-pers"))),
 
     Schritt("accounts", "Account-IDs nach HSO-Schema vergeben (Szenario 4)",
             "python", "scripts/mapping/generate_accounts.py", "~2 s",
-            (_soll("Sz4", "user_id gesetzt"), _soll("Sz4", "eindeutige user_id"))),
+            (_soll("sz4-uid-gesetzt"), _soll("sz4-uid-eindeutig"),
+             _soll("sz4-mail-gesetzt"))),
 
     # Vor der View, nicht danach: die View liest hso_images, und
     # CREATE OR REPLACE VIEW prueft die referenzierten Tabellen sofort. Auf
     # einem frischen Stack existiert hso_images erst nach diesem Schritt.
     Schritt("bilder", "1.100 Bilder als BYTEA laden (Szenario 3)",
             "python", "scripts/images/load_images.py", "~2 min",
-            (_soll("Sz3", "hso_images in der Quelle"),)),
+            (_soll("sz3-bilder-quelle"), _soll("sz3-bilder-inhalt"))),
 
     Schritt("view", "View hso_user anlegen (Szenario 5)",
             "python", "scripts/mapping/create_hso_user_view.py", "~1 s",
@@ -151,41 +138,46 @@ SCHRITTE = [
 
     Schritt("sync-pg", "Sync fm_gebaeude und k_plz nach dest-postgres (Szenario 1)",
             "sync", "HSO PG nach PG (Full Refresh)", "~1 bis 2 min",
-            (_soll("Sz1", "fm_gebaeude"), _soll("Sz1", "k_plz"))),
+            (_soll("sz1-gebaeude-pg"), _soll("sz1-plz-pg"))),
 
     Schritt("sync-mysql", "Sync fm_gebaeude und k_plz nach dest-mysql (Szenario 1)",
             "sync", "HSO PG nach MySQL (Full Refresh)", "~1 bis 2 min",
-            (GEBAEUDE_IN_MYSQL, PLZ_IN_MYSQL)),
+            (_soll("sz1-gebaeude-mysql"), _soll("sz1-plz-mysql"))),
 
     Schritt("sync-students", "Sync hso_students.csv per File-Connector",
             "sync", "HSO CSV hso_students nach PG", "~1 bis 2 min",
-            (STUDENTS_IM_ZIEL,)),
+            (_soll("sz1-students-pg"),)),
 
     # fm_gebaeude liegt schon aus sync-pg im Ziel und darf hier nicht nochmal
     # kommen, sonst verdoppelt sich die Tabelle (siehe Kommentar in
     # setup_connections.py).
     Schritt("sync-fm", "Sync fm_stamm und fm_inst nach dest-postgres",
             "sync", "HSO FM nach PG", "~1 bis 2 min",
-            (FM_STAMM_IM_ZIEL,)),
+            (_soll("sz2-stamm"), _soll("sz2-inst"))),
 
     Schritt("sync-accounts", "Sync der Account-Sichten nach dest-postgres (Szenario 4)",
             "sync", "HSO Accounts nach PG", "~1 bis 2 min",
-            (_soll("Sz4", "hso_student_accounts"),
-             _soll("Sz4", "hso_personal_accounts"))),
+            (_soll("sz4-stud-accounts"), _soll("sz4-pers-accounts"))),
 
     Schritt("sync-bilder", "Sync hso_images nach MySQL (Szenario 3, Befund 1)",
             "sync", "HSO Bilder nach MySQL", "~1 bis 2 min",
-            (_soll("Sz3", "hso_images Zeilen in MySQL"),
-             _soll("Sz3", "mit Inhalt"))),
+            (_soll("sz3-mysql-zeilen"), _soll("sz3-mysql-inhalt"))),
+
+    # Teilaufgabe B von Szenario 3. Stand bisher in keinem Schritt, obwohl die
+    # Aufgabenstellung den Export ausdruecklich verlangt: der Demo-Zustand galt
+    # als hergestellt, ohne dass je eine Datei geschrieben wurde.
+    Schritt("bilder-export", "1.100 Bilder aus der DB exportieren (Szenario 3, Teil B)",
+            "python", "scripts/images/export_images.py", "~10 s",
+            (_soll("sz3-export-anzahl"), _soll("sz3-export-bytes"))),
 
     Schritt("sync-idm", "Sync hso_user nach MySQL, Incremental mit Dedup (Szenario 5)",
             "sync", "HSO IdM hso_user nach MySQL", "~1 bis 2 min",
-            (_soll("Sz5", "hso_user Zeilen"), _soll("Sz5", "verschiedene user_id"),
-             _soll("Sz5", "mit image_id"))),
+            (_soll("sz5-user-zeilen"), _soll("sz5-user-eindeutig"),
+             _soll("sz5-user-bild"))),
 
     Schritt("dbt", "fm_raeume in dest-postgres bauen (Szenario 2)",
             "dbt", "", "~5 s",
-            (_soll("Sz2", "fm_raeume Zeilen"), _soll("Sz2", "mit Institut"))),
+            (_soll("sz2-raeume-pg"), _soll("sz2-raeume-institut"))),
 
     # Beim ersten Aufbau gab es fm_raeume in dest-postgres noch nicht, als
     # 'connections' lief, die Connection wurde deshalb vertagt. Jetzt existiert
@@ -193,11 +185,11 @@ SCHRITTE = [
     # sync-raeume: liegt fm_raeume schon in MySQL, ist hier nichts zu tun.
     Schritt("connections-raeume", "Vertagte Connection fuer fm_raeume nachziehen",
             "python", "scripts/airbyte/setup_connections.py", "~40 s",
-            (_soll("Sz2", "fm_raeume in MySQL"),)),
+            (_soll("sz2-raeume-mysql"),)),
 
     Schritt("sync-raeume", "Sync fm_raeume nach MySQL (Szenario 2, Teil B)",
             "sync", "HSO fm_raeume nach MySQL", "~1 bis 2 min",
-            (_soll("Sz2", "fm_raeume in MySQL"),)),
+            (_soll("sz2-raeume-mysql"), _soll("sz2-raeume-mysql-institut"))),
 ]
 
 
@@ -240,7 +232,7 @@ def ist_erledigt(schritt: Schritt, ergebnisse) -> bool:
     if not schritt.pruefungen:
         return False
     gemessen = {(p.quelle, p.abfrage): wert for p, wert in ergebnisse}
-    return all(gemessen.get((p.quelle, p.abfrage)) == p.erwartet
+    return all(pz.stimmt(p, gemessen.get((p.quelle, p.abfrage)))
                for p in schritt.pruefungen)
 
 

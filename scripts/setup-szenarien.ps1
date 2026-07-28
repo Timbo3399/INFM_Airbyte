@@ -158,10 +158,10 @@ $pruefCode = $LASTEXITCODE
 Write-Host ""
 Write-Host "  ===================================================" -ForegroundColor DarkGray
 if ($pruefCode -eq 0) {
-    Write-Host "  Demo-Zustand steht, alle Pruefungen stimmen." -ForegroundColor Green
+    Write-Host "  Demo-Zustand steht, jedes gepruefte Szenario ist erfuellt." -ForegroundColor Green
 } else {
-    Write-Host "  Es fehlt noch etwas, siehe Tabelle oben." -ForegroundColor Yellow
-    Write-Host "  Die Sollwerte sind in docs\ergebnisse.md belegt." -ForegroundColor Gray
+    Write-Host "  Mindestens ein Szenario ist nicht erfuellt, siehe Tabelle oben." -ForegroundColor Yellow
+    Write-Host "  Unter 'Offen' steht je Teilaufgabe das Kommando, das sie herstellt." -ForegroundColor Gray
 }
 Write-Host ""
 Write-Host "  Airbyte UI:  http://localhost:8000" -ForegroundColor White

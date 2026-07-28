@@ -108,8 +108,10 @@ schon steht.
 python scripts/pruefe_szenarien.py
 ```
 
-Stellt je Szenario Soll und Ist gegenüber. Alle Sollwerte sind in
-[docs/ergebnisse.md](docs/ergebnisse.md) belegt.
+Sagt je Szenario, ob es laut seiner Definition durchgelaufen ist, und nennt bei
+einer Lücke die betroffene Teilaufgabe samt Kommando. Alle Sollwerte sind in
+[docs/ergebnisse.md](docs/ergebnisse.md) und
+[docs/testszenarien.md](docs/testszenarien.md) belegt.
 
 → Die Szenarien im Detail: **[docs/testszenarien.md](docs/testszenarien.md)**
 
@@ -251,8 +253,8 @@ INFM_Airbyte/
     ├── install.ps1 · install.sh        ← Schritt 1: DB-Stack + Testdaten
     ├── setup-airbyte.ps1 · .sh         ← Schritt 2: Airbyte via abctl installieren
     ├── setup-szenarien.ps1 · .sh       ← Schritt 3: Mapping, Bilder, Syncs, dbt
-    ├── setup_szenarien.py              ← die 17 Schritte, idempotent (von den Wrappern gerufen)
-    ├── pruefe_szenarien.py             ← prüft je Szenario den Sollzustand, Tabelle + Exit-Code
+    ├── setup_szenarien.py              ← die 18 Schritte, idempotent (von den Wrappern gerufen)
+    ├── pruefe_szenarien.py             ← Urteil je Szenario laut Definition, Tabelle + Exit-Code
     ├── start.ps1 · start.sh            ← Stack starten
     ├── stop.ps1 · stop.sh              ← Stack stoppen (-v für vollständigen Reset)
     ├── uninstall.ps1 · uninstall.sh    ← Airbyte (abctl) + Stack komplett entfernen
