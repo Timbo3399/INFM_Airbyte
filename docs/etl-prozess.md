@@ -93,7 +93,7 @@ Airbyte-UI erreichbar unter **http://localhost:8000** (Login: `abctl local crede
 ## Schritt 3: Connection und Stream-Auswahl
 
 **Connections → + New Connection** → Source `HSO Source PostgreSQL`, Destination `HSO Dest PostgreSQL`.
-Airbyte führt automatisch eine **Schema-Discovery** aus (zeigt die 7 Streams).
+Airbyte führt automatisch eine **Schema-Discovery** aus. Beim damaligen Erstlauf waren es 7 Streams; nach dem vollständigen Aufbau sind es mehr, weil `hso_images` und die drei Sichten (`hso_user`, `hso_student_accounts`, `hso_personal_accounts`) dazukommen.
 
 <em>Das Schema wird nicht automatisch aktualisiert, es wird aber erkannt, wenn sich etwas geändert hat</em>.
 
@@ -147,11 +147,11 @@ Erwartet: `fm_gebaeude` = 25, `k_plz` = 34.172 (entspricht der Source).
 
 ## Screenshot-Checkliste für den Bericht
 
-- [ ] Source erfolgreich angelegt
-- [ ] Destination erfolgreich angelegt
-- [ ] Connection mit Streams + Sync-Modus
-- [ ] Erfolgreicher Sync (Status „Succeeded" + Record-Zahlen)
-- [ ] Verifikation in der Ziel-DB
+- [x] Source erfolgreich angelegt — `05-source-postgres-angelegt.jpg`
+- [x] Destination erfolgreich angelegt — `07-destination-postgres-angelegt.jpg`
+- [x] Connection mit Streams + Sync-Modus — `12-connection-ziel-auswahl.jpg`
+- [x] Erfolgreicher Sync (Status „Succeeded" + Record-Zahlen) — `08-connection-pg-pg-sync.jpg`
+- [ ] Verifikation in der Ziel-DB — offen, die Zeilenzahlen sind bisher nur als Text belegt (Schritt 5)
 
 ---
 
@@ -192,7 +192,7 @@ Jedoch erfordert die Verarbeitung von Datumsfeldern via Airbyte-File-Connector e
 
 Anschließend ist der Vorgang äquivalent zu dem Einlesen der Studentendaten, wobei die Daten mit einem File-Connector übertragen werden müssen - siehe [airbyte-setup.md](airbyte-setup.md), Kap. 7.
 Hierfür muss zuerst die rooms.xltx Datei in den kind-node gemountet werden.
-Dafür muss die Datei "rooms.xltx" zunächst in den Ordner sql/source/data verschoben werden, damit die Datei in /local/ im node sichtbar wird.
+Die Datei liegt dafür in `sql/source/data/` und ist damit im Node unter `/local/rooms.xltx` sichtbar; `setup-airbyte.ps1` mountet das Verzeichnis beim Install.
 
 Für die Connection muss als Source dann der entsprechende File-Connector mit der Source PostgreSQL als Destination angelegt werden. 
 
@@ -210,7 +210,7 @@ Beide Wege in dieselbe Tabelle liefern unterschiedlich viele Zeilen:
 | Airbyte File-Connector | 1.245 | schreibt alle Zeilen der Quelle |
 
 Das Sync-Log belegt es: `recordsCommitted: 1245` für den Stream `fm_stamm`
-(siehe [call-notes-2026-06-16.md](call-notes-2026-06-16.md), Abschnitt 4).
+(das Log-Beispiel steht in [quality_assurance.md](quality_assurance.md#monitoring)).
 `rooms.xltx` enthält 1.245 Datenzeilen, darunter genau eine Dublette.
 
 Die vom Airbyte-Destination-Connector angelegte Zieltabelle übernimmt den Primärschlüssel

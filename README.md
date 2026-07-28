@@ -151,13 +151,18 @@ einer Lücke die betroffene Teilaufgabe samt Kommando. Alle Sollwerte sind in
 │                                                         │
 │  ┌──────────────────┐        ┌───────────────────────┐  │
 │  │  source-postgres │        │       Airbyte         │  │
-│  │  (Testdaten)     │◄──────►│  UI: localhost:8000   │  │
-│  │  localhost:5433  │        │  API: localhost:8001  │  │
+│  │  (Testdaten)     │◄──────►│  UI:  localhost:8000  │  │
+│  │  localhost:5433  │        │  API: localhost:8000  │  │
 │  └──────────────────┘        └────────┬──────────────┘  │
 │                                       │                 │
 │  ┌──────────────────┐  ┌──────────────▼────────────┐    │
 │  │   dest-mysql     │  │     dest-postgres         │    │
 │  │   localhost:3306 │  │     localhost:5434        │    │
+│  └──────────────────┘  └─────────────┬─────────────┘    │
+│                                      │                  │
+│  ┌──────────────────┐  ┌─────────────▼─────────────┐    │
+│  │   file-server    │  │        postgrest          │    │
+│  │   localhost:8888 │  │     localhost:3000        │    │
 │  └──────────────────┘  └───────────────────────────┘    │
 │                                                         │
 │  Netzwerk: airbyte_net (alle Container verbunden)       │
@@ -211,16 +216,18 @@ INFM_Airbyte/
 │   └── dest-mysql/00_init.sql  ← Schema-Init für dest-mysql
 │
 ├── data/                       ← Quelldaten nur für die Host-Loader (nicht im /local-Mount)
-│   ├── csv/                    ← anredetitel, k_hochschule + k_res/ (k_res1 bis 13) → load_lookups.py
+│   ├── csv/                    ← anredetitel, k_hochschule + k_res/ (8 Dateien) → load_lookups.py
 │   ├── js/                     ← hso_accountgenerator.js (HSO-Original-Logik, REFERENZ,
 │   │                             nicht geladen; portiert in mapping/generate_accounts.py)
-│   └── json/                   ← fm_rna.json, hso_personal.json → load_json.py
+│   ├── json/                   ← fm_rna.json, hso_personal.json → load_json.py
+│   └── images/                 ← Ziel von images/export_images.py (1.100 Dateien,
+│                                 gitignored; von pruefe_szenarien.py geprüft)
 │
 ├── docker/fileserver/          ← nginx-Config für den CSV-File-Server
 │
 ├── docs/
 │   ├── abschlussbericht.md     ← Abschlussbericht: Antwort auf die Evaluationsfrage
-│   ├── zwischenbericht.md      ← Zwischenbericht (Abgabe 7.6.)
+│   ├── zwischenbericht.md      ← Zwischenbericht (Abgabe 7.6.), .tex daneben
 │   ├── ergebnisse.md           ← alle Befunde der Evaluation in einer Tabelle
 │   ├── bewertung-airbyte.md    ← ausformulierte Bewertung, Aufwand, Empfehlung
 │   ├── anforderungen.md        ← Kickoff-Anforderungen & Umsetzungsstand

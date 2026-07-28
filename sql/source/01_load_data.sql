@@ -25,7 +25,8 @@
 --     Spalten als der Header" war falsch); ein quote-bewusster Parser laedt alle
 --     5.052 Zeilen. Zusaetzlich auch via Airbyte File-Connector verfuegbar
 --     (siehe docs/airbyte-setup.md, Abschnitt 7).
---   * fm_stamm wird als Teil des ETL-Mappings aus rooms.xltx befuellt (1.245 Zeilen).
+--   * fm_stamm wird als Teil des ETL-Mappings aus rooms.xltx befuellt: 1.244 Zeilen
+--     aus 1.245 Quellzeilen, eine PK-Dublette (307/0/5) wird verworfen.
 --
 -- Die Tabellen-Schemata fuer fm_gebaeude, fm_inst, k_plz, fm_stamm und hso_students
 -- werden weiterhin in 00_tables.sql angelegt; die uebrigen Tabellen legen ihre Loader an.

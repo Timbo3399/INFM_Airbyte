@@ -214,7 +214,7 @@ bash scripts/setup-szenarien.sh
 ```
 
 Das Skript prüft die Voraussetzungen (Container laufen, Airbyte erreichbar,
-Python-Pakete da) und arbeitet dann siebzehn Schritte in fester Reihenfolge ab:
+Python-Pakete da) und arbeitet dann achtzehn Schritte in fester Reihenfolge ab:
 
 | # | Schritt | Dauer | Was passiert |
 |---|---|---|---|
@@ -253,7 +253,7 @@ Am Ende ruft das Skript `pruefe_szenarien.py` auf und zeigt den Sollzustand.
 ### Ein zweiter Lauf überspringt, was schon steht
 
 Vor dem Lauf misst das Skript, welche Sollzustände erreicht sind, und lässt die
-zugehörigen Schritte aus. Das lohnt sich, denn die Bilder brauchen drei Minuten
+zugehörigen Schritte aus. Das lohnt sich, denn die Bilder brauchen ein bis zwei Minuten
 und jeder Sync rund eine. Auf einem fertigen Stack ist der Lauf in Sekunden
 durch.
 
@@ -450,7 +450,7 @@ Alle Loader sind idempotent (`TRUNCATE` plus `INSERT`), ein zweiter Lauf schadet
 also nicht.
 
 Schritt 2 und 3 gibt es nicht von Hand: `abctl local install` braucht den
-`--volume`-Mount aus dem Setup-Skript, und die siebzehn Szenario-Schritte von
+`--volume`-Mount aus dem Setup-Skript, und die achtzehn Szenario-Schritte von
 Hand nachzuklicken ist genau die Arbeit, die `setup-szenarien` abnimmt.
 
 ---
@@ -467,7 +467,7 @@ docker logs hso_dest_mysql --tail 50
 ```
 
 Häufige Ursachen:
-- **Port belegt:** Ein anderer Dienst nutzt Port 5433, 5434, 3306, 8888 oder 3000. In `.env` und `docker-compose.yml` einen anderen Port eintragen.
+- **Port belegt:** Ein anderer Dienst nutzt Port 5433, 5434, 3306, 8888 oder 3000. Die Host-Ports stehen fest in `docker-compose.yml` (`"5433:5432"` und so weiter), nicht in der `.env` — dort nur den Wert links vom Doppelpunkt ändern und den Stack neu starten. Denselben Wert dann in der `.env` unter `SOURCE_PG_PORT` beziehungsweise `DEST_PG_PORT` eintragen, damit Loader, `pruefe_szenarien.py` und dbt mitziehen, und in [`scripts/airbyte/setup_objects.py`](../scripts/airbyte/setup_objects.py), wo der Port im Source- und Destination-Payload steht.
 - **Volumes aus altem Start:** Windows `.\scripts\stop.ps1 -v`, Linux/macOS `bash scripts/stop.sh -v`, danach neu starten.
 
 ### Airbyte läuft nicht oder die UI ist nicht erreichbar

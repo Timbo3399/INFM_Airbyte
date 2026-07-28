@@ -86,7 +86,8 @@ Standardwerte aus `.env.example`. Wurden sie in `.env` geändert, gelten die dor
 | Ziel PostgreSQL | `localhost:5434` | `host.docker.internal:5434` | `destdb` | `destuser` | `destpassword` |
 | Ziel MySQL | `localhost:3306` | `host.docker.internal:3306` | `destdb` | `destuser` | `destpassword` |
 | Airbyte UI | `http://localhost:8000` | entfällt | entfällt | entfällt | entfällt |
-| PostgREST (Szenario 6) | `http://localhost:3000` | entfällt | entfällt | entfällt | entfällt |
+| PostgREST (Szenario 6a) | `http://localhost:3000` | entfällt | entfällt | entfällt | entfällt |
+| File-Server (CSV-Browsing) | `http://localhost:8888` | entfällt (der File-Connector liest `/local/`) | entfällt | entfällt | entfällt |
 
 > **Warum in Airbyte `host.docker.internal` statt der Container-Namen?**
 > Airbyte läuft in einem kind-Cluster und **nicht** im Docker-Netz `airbyte_net`. Seine
