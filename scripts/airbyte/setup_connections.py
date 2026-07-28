@@ -5,8 +5,9 @@ Ergaenzt setup_objects.py (Sources und Destinations) um den zweiten
 Teil der Airbyte-Konfiguration. Zusammen stellen die beiden Skripte nach einem
 `abctl local uninstall` den kompletten Stand wieder her.
 
-Angelegt werden:
-  * die drei im Zwischenbericht dokumentierten Full-Refresh-Connections
+Angelegt werden acht Connections, eine je Szenario-Strecke:
+  * sieben mit Full Refresh | Overwrite (Szenario 1 bis 4 sowie fm_raeume
+    zurueck nach MySQL fuer Szenario 2, Teilaufgabe B)
   * die IdM-Connection aus Szenario 5: hso_user nach MySQL, Incremental mit
     Deduplizierung ueber den Cursor updatedat und den Primaerschluessel user_id
 
