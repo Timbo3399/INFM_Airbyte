@@ -6,7 +6,8 @@
 > **Konvention:** Windows nutzt die PowerShell-Skripte (`.ps1`), Linux/macOS die Bash-Skripte (`.sh`). Beide treffen dieselben Entscheidungen und führen dieselben Python-Skripte aus.
 
 Am Ende steht der Zustand, den [ergebnisse.md](ergebnisse.md) beschreibt.
-`pruefe_szenarien.py` rechnet nach und zeigt es als Tabelle.
+`pruefe_szenarien.py` rechnet nach und sagt je Szenario, ob es laut seiner
+Definition durchgelaufen ist.
 
 ---
 
@@ -230,10 +231,11 @@ Python-Pakete da) und arbeitet dann siebzehn Schritte in fester Reihenfolge ab:
 | 11 | `sync-fm` | ~1 bis 2 min | `fm_stamm` und `fm_inst` nach dest-postgres |
 | 12 | `sync-accounts` | ~1 bis 2 min | die beiden Account-Sichten je als eigene Zieltabelle, Szenario 4 |
 | 13 | `sync-bilder` | ~1 bis 2 min | `hso_images` nach MySQL, Szenario 3 |
-| 14 | `sync-idm` | ~1 bis 2 min | `hso_user` nach MySQL, Incremental mit Dedup, Szenario 5 |
-| 15 | `dbt` | ~5 s | `fm_raeume` in dest-postgres bauen, Szenario 2 |
-| 16 | `connections-raeume` | ~40 s | die vertagte Connection für `fm_raeume` nachziehen |
-| 17 | `sync-raeume` | ~1 bis 2 min | das fertige Modell weiter nach MySQL |
+| 14 | `bilder-export` | ~10 s | die 1.100 Bilder zurück ins Dateisystem, Szenario 3 Teil B |
+| 15 | `sync-idm` | ~1 bis 2 min | `hso_user` nach MySQL, Incremental mit Dedup, Szenario 5 |
+| 16 | `dbt` | ~5 s | `fm_raeume` in dest-postgres bauen, Szenario 2 |
+| 17 | `connections-raeume` | ~40 s | die vertagte Connection für `fm_raeume` nachziehen |
+| 18 | `sync-raeume` | ~1 bis 2 min | das fertige Modell weiter nach MySQL |
 
 Am Ende ruft das Skript `pruefe_szenarien.py` auf und zeigt den Sollzustand.
 
@@ -269,37 +271,78 @@ python scripts/setup_szenarien.py --trockenlauf
 python scripts/pruefe_szenarien.py
 ```
 
-Die Ausgabe stellt Soll und Ist gegenüber:
+Die Ausgabe beantwortet zuerst die Frage, auf die es ankommt: ist ein Szenario
+laut seiner Definition durchgelaufen?
 
 ```
-Szenario  Pruefung                                 erwartet  gefunden  Status
---------  ---------------------------------------  --------  --------  ------
-Sz1       fm_gebaeude in dest-postgres                   25        25  ok
-Sz1       k_plz in dest-postgres                     34.172    34.172  ok
-Sz2       fm_raeume Zeilen in dest-postgres           1.244     1.244  ok
-Sz2       fm_raeume mit Institut                      1.184     1.184  ok
-Sz2       fm_raeume in MySQL                          1.244     1.244  ok
-Sz3       hso_images in der Quelle                    1.100     1.100  ok
-Sz3       hso_images Zeilen in MySQL                  1.100     1.100  ok
-Sz3       hso_images mit Inhalt in MySQL (Befund)         0         0  ok
-Sz4       user_id gesetzt (students + personal)       5.922     5.922  ok
-Sz4       eindeutige user_id                          5.922     5.922  ok
-Sz5       hso_user Zeilen in MySQL                    5.922     5.922  ok
-Sz5       verschiedene user_id in MySQL               5.922     5.922  ok
-Sz5       hso_user mit image_id                       5.922     5.922  ok
-Sz6a      GET /k_plz?limit=1 liefert HTTP               200       200  ok
+Szenario                                  Teilaufgaben  Pruefungen  Status
+----------------------------------------  ------------  ----------  ---------------
+Sz1   Einspielen der Testdaten                     3/3         5/5  erfuellt
+Sz2   Facility Management                          2/2       10/10  erfuellt
+Sz3   Testdaten fuer Bilder generieren             1/2         3/5  NICHT erfuellt
+Sz4   Mapping von Studenten und Personal           3/3       15/15  erfuellt
+Sz5   IdM-System                                   2/2         8/8  erfuellt
+Sz6a  Web-API: REST                                1/1         3/3  erfuellt
+Sz6b  Web-API: SOAP (HISinOne)                       -           -  nicht umgesetzt
 
-14 Pruefungen, 14 ok, 0 fehlt
+Szenarien: 5 von 6 erfuellt, 1 nicht erfuellt, 1 nicht umgesetzt.
 ```
 
-Der Exit-Code ist 0, wenn alles stimmt, sonst 1. Damit taugt das Skript auch für
-CI oder eine Schleife im Terminal.
+Ein Szenario gilt als erfüllt, wenn jede Pflichtprüfung jeder seiner
+Teilaufgaben stimmt. Die Gliederung in Teilaufgaben folgt
+[testszenarien.md](testszenarien.md): A und B bei Szenario 2 und 3, Schritt 1
+bis 3 bei Szenario 4. Damit zeigt die Tabelle nicht nur, *dass* etwas fehlt,
+sondern welcher Teil der Aufgabenstellung.
+
+Was offen ist, steht darunter, mitsamt dem Kommando, das es herstellt:
+
+```
+Offen:
+
+  Sz3  B  Bilder aus der Datenbank exportieren
+      Dateien in data/images        erwartet     1.100   gefunden         0
+      Bytes in data/images          erwartet 8.207.021   gefunden         0
+      -> python scripts/images/export_images.py
+```
+
+Der Exit-Code ist 0, wenn jedes geprüfte Szenario erfüllt ist, sonst 1. Damit
+taugt das Skript auch für CI oder eine Schleife im Terminal. Szenario 6b zählt
+nicht dagegen: es ist nicht umgesetzt, weil der externe Zugang aussteht, und
+steht mit genau diesem Status in der Tabelle. Es wegzulassen wäre die
+unehrlichere Variante, in einer Bewertung ist gerade die Lücke eine Aussage.
+
+### Dokumentierte Befunde stehen getrennt
+
+Am Ende folgt ein eigener Block:
+
+```
+Dokumentierte Befunde (erwartete Fehlschlaege, kein Mangel des Aufbaus):
+
+Dokumentierter Befund                                 erwartet  gemessen  Status      Beleg
+---------------------------------------------  ---------------  --------  ----------  ---------
+Sz2  derselbe Join ohne lpad trifft nichts                   0         0  bestaetigt  Befund 16
+Sz3  hso_images Zeilen in MySQL                          1.100     1.100  bestaetigt  Befund 1
+Sz3  hso_images mit Inhalt in MySQL                          0         0  bestaetigt  Befund 1
+Sz5  eindeutige Indizes auf hso_user in MySQL                0         0  bestaetigt  Befund 2
+Sz5  Rohtabelle behaelt jede Generation        5.922 oder mehr     5.922  bestaetigt  Befund 5
+```
 
 Die Zeile `hso_images mit Inhalt in MySQL` erwartet eine 0, und das ist kein
 Tippfehler. Der Sync legt in MySQL 1.100 Zeilen an, überträgt den Bildinhalt
 nicht und meldet trotzdem Erfolg. Das ist der wichtigste Befund der Evaluation,
-nachzulesen in [ergebnisse.md](ergebnisse.md) Zeile 1. Die Prüfung hält ihn
-fest, damit niemand ihn aus Versehen wegräumt.
+nachzulesen in [ergebnisse.md](ergebnisse.md) Zeile 1.
+
+Solche Befunde stehen bewusst nicht in der Szenario-Wertung. Sie sind Ergebnisse
+der Evaluation, keine Mängel des Aufbaus: dass Airbyte BLOBs verliert, macht
+Szenario 3 nicht unerfüllt, denn das Szenario-Ziel ist über die Python-Skripte
+erreicht. Sie heißen deshalb `bestaetigt` und nicht `ok` — ein `ok` neben
+"0 übertragene Bilder" liest sich, als wäre das in Ordnung.
+
+Reproduziert ein Befund **nicht** mehr, meldet das Skript ihn laut als
+`NICHT reproduziert`. Der Exit-Code bleibt davon unberührt: dann ist nicht der
+Aufbau kaputt, sondern [ergebnisse.md](ergebnisse.md) veraltet.
+
+### Weitere Aufrufe
 
 Nur einzelne Szenarien prüfen, etwa für die Präsentation:
 
@@ -307,11 +350,22 @@ Nur einzelne Szenarien prüfen, etwa für die Präsentation:
 python scripts/pruefe_szenarien.py Sz3 Sz5
 ```
 
-Alle Sollwerte stehen in [ergebnisse.md](ergebnisse.md) und sind dort belegt.
+Jede einzelne Prüfung sehen, nach Teilaufgaben gruppiert:
+
+```bash
+python scripts/pruefe_szenarien.py --detail
+```
+
+Nur die Urteilszeile, etwa für ein Skript:
+
+```bash
+python scripts/pruefe_szenarien.py --leise
+```
+
+Alle Sollwerte sind belegt, in [ergebnisse.md](ergebnisse.md) oder in
+[testszenarien.md](testszenarien.md); der Beleg steht im Kommentar daneben.
 Weicht ein Lauf ab, ist das ein Befund und keine Einladung, die Erwartung
 nachzuziehen.
-
-Szenario 6b (SOAP) fehlt in der Tabelle, weil der externe Zugang dafür aussteht.
 
 ---
 
@@ -503,7 +557,8 @@ Einfach `install` erneut ausführen oder die Loader einzeln aufrufen (siehe
 `install` lädt die zehn Quelltabellen per `TRUNCATE` und `INSERT` aus den CSVs
 neu. Die sind anonymisiert, haben also keine Namen. Damit sind auch die
 Zufallsnamen und die daraus abgeleiteten `user_id` weg, und die View `hso_user`
-ist leer. `pruefe_szenarien.py` zeigt das als zwei rote Zeilen bei Sz4.
+ist leer. `pruefe_szenarien.py` meldet Szenario 4 dann als `NICHT erfuellt` und
+nennt unter "Offen" die Teilaufgabe `1 Namen befuellen`.
 
 Reparatur ist ein Lauf von `setup-szenarien`: die Schritte `namen`, `accounts`
 und `view` erkennen den fehlenden Sollzustand und laufen erneut, alles andere

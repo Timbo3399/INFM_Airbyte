@@ -81,9 +81,16 @@ Airbyte: die sieben Folgeschritte standen in der Dokumentation der einzelnen
 Szenarien, aber nirgends als Ablauf.
 
 Dazu gehört ein zweites Werkzeug, [`scripts/pruefe_szenarien.py`](../scripts/pruefe_szenarien.py).
-Es prüft je Szenario den Sollzustand gegen die belegten Zahlen und gibt eine Tabelle
-mit Soll, Ist und Status aus. Der Exit-Code ist 0, wenn alles stimmt. Die Zahlen in
-diesem Bericht lassen sich damit nachrechnen statt nur nachlesen.
+Es gliedert die Prüfung wie [testszenarien.md](testszenarien.md) selbst, in Szenarien
+und Teilaufgaben, und beantwortet je Szenario die Frage, ob es laut seiner Definition
+durchgelaufen ist. Der Exit-Code ist 0, wenn jedes geprüfte Szenario erfüllt ist. Die
+Zahlen in diesem Bericht lassen sich damit nachrechnen statt nur nachlesen.
+
+Zwei Dinge hält das Werkzeug bewusst auseinander. Die dokumentierten Befunde aus
+[ergebnisse.md](ergebnisse.md) werden nachgemessen, zählen aber nicht gegen ein
+Szenario: dass Airbyte BLOBs verliert, ist ein Ergebnis der Evaluation und kein Mangel
+des Aufbaus. Und Szenario 6b steht als `nicht umgesetzt` in der Tabelle statt gar
+nicht — in einer Bewertung ist gerade die Lücke eine Aussage.
 
 Der Code ist durch eine Testsuite abgedeckt, die bei jedem Pull Request gegen `main`
 läuft ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)). Die Tests brauchen
